@@ -1,3 +1,5 @@
+<!-- CANONICAL SOURCE: /Users/izzyjay/Documents/vault/me/series/pro-tools-for-life/ep01-gym-okrs.md
+     Design rules: prose only (no <br> tags in Fix/Your Move/Trap). Read vault file before editing content. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -259,6 +261,66 @@
     letter-spacing: 0.05em;
   }
 
+  /* NOTES BOX */
+  .notes-box {
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+  }
+
+  .notes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .notes-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #999;
+  }
+
+  .copy-btn {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #c9581e;
+    background: none;
+    border: 1.5px solid #c9581e;
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .copy-btn:hover { background: #c9581e; color: #fff; }
+  .copy-btn.copied { background: #27863a; border-color: #27863a; color: #fff; }
+
+  .notes-textarea {
+    width: 100%;
+    min-height: 80px;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    color: #222;
+    resize: vertical;
+    outline: none;
+    line-height: 1.5;
+    background: #fafafa;
+    transition: border-color 0.15s;
+  }
+
+  .notes-textarea::placeholder { color: #bbb; }
+  .notes-textarea:focus { border-color: #c9581e; background: #fff; }
+
   /* YOUR MOVE — closure box */
   .your-move-box {
     border-left: 4px solid #c9581e;
@@ -313,7 +375,7 @@
     .table-section { margin-bottom: 12px; }
     .table-rows { gap: 6px; }
     .cell-left, .cell-right { font-size: 12px; padding: 7px 10px; }
-    .mid-row { gap: 8px; margin-bottom: 10px; }
+    .mid-row { gap: 8px; margin-bottom: 10px; grid-template-columns: 1fr; }
     .trap-body { padding: 10px 12px; }
     .trap-body p { font-size: 11.5px; line-height: 1.5; }
     .fix-body { padding: 10px 12px; }
@@ -321,11 +383,28 @@
     .okr-box { padding: 11px 14px; margin-bottom: 10px; }
     .okr-objective { font-size: 13px; margin-bottom: 8px; padding-bottom: 8px; }
     .kr-item { font-size: 12px; gap: 7px; }
-    .your-move-box { padding: 10px 14px; margin-bottom: 12px; }
+    .your-move-box { padding: 10px 14px; margin-bottom: 10px; }
     .your-move-text { font-size: 12.5px; }
+    .notes-box { padding: 10px 14px; margin-bottom: 10px; }
+    .notes-textarea { font-size: 12.5px; min-height: 70px; }
     .footer { margin-top: 0; }
   }
 </style>
+<script>
+  function copyNotes(btn) {
+    var textarea = btn.closest('.notes-box').querySelector('textarea');
+    var text = textarea.value.trim();
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = 'Copied \u2713';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1500);
+    });
+  }
+</script>
 </head>
 <body>
 <div class="slide">
@@ -370,7 +449,7 @@
         <div class="trap-header-text">The Trap</div>
       </div>
       <div class="trap-body">
-        <p>No clear outcome. No consistent structure. Training in bursts.<br><br>Motivated for a week. Gone for two.<br><br>Every miss feels like failure. That feeling kills the next session.<br><br>You're not lazy. You're unstructured.</p>
+        <p>No clear outcome defined. No consistent structure. Training happens in bursts — motivated for a week, gone for two. Every miss feels like failure. That feeling kills the next session. And the one after that. You're not lazy. You're unstructured.</p>
       </div>
     </div>
     <div class="fix-box">
@@ -378,7 +457,7 @@
         <div class="fix-header-text">The Fix</div>
       </div>
       <div class="fix-body">
-        <div class="fix-text">One objective.<br>Three key results.<br>21 days.<br>Reflect each Friday.</div>
+        <div class="fix-text">One objective. Three key results. 21 days. Reflect each Friday.</div>
       </div>
     </div>
   </div>
@@ -407,7 +486,15 @@
 
   <div class="your-move-box">
     <div class="your-move-label">Your Move</div>
-    <div class="your-move-text">Set your OKR before your next session.<br>Write the objective.<br>Write the three numbers that prove you hit it.<br><br>You're not starting a routine.<br>You're building a scoreboard.</div>
+    <div class="your-move-text">Set your OKR before your next session. Write the objective. Write the three numbers that prove you hit it. You're not starting a routine. You're building a scoreboard.</div>
+  </div>
+
+  <div class="notes-box">
+    <div class="notes-header">
+      <div class="notes-label">Your Notes</div>
+      <button class="copy-btn" onclick="copyNotes(this)">Copy</button>
+    </div>
+    <textarea class="notes-textarea" placeholder="Write your objective and three key results here..."></textarea>
   </div>
 
   <div class="footer">
