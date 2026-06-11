@@ -1,0 +1,394 @@
+<!-- CANONICAL SOURCE: /Users/izzyjay/Documents/vault/me/series/pro-tools-for-life/identity-mvp.md
+     Design rules: prose only (no <br> tags in Fix/Your Move/Trap). Read vault file before editing content. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EP04 — Identity MVP</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    background: #f0ebe0;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .slide {
+    background: #f0ebe0;
+    width: 100%;
+    max-width: 860px;
+    padding: 36px 44px;
+  }
+
+  .series-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 12px;
+  }
+
+  .headline {
+    font-size: clamp(16px, 3.2vw, 40px);
+    font-weight: 900;
+    line-height: 1.12;
+    color: #111;
+    margin-bottom: 28px;
+    letter-spacing: -0.02em;
+  }
+
+  /* PROBLEM / TOOL ROW */
+  .pt-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .pt-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pt-header {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #999;
+  }
+
+  .cell-left {
+    background: #fff;
+    border: 2px solid #222;
+    border-radius: 4px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    color: #222;
+    font-weight: 500;
+    line-height: 1.6;
+    flex: 1;
+  }
+
+  .cell-right {
+    background: #fff;
+    border: 2.5px solid #c9581e;
+    border-radius: 22px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    color: #222;
+    font-weight: 500;
+    line-height: 1.6;
+    flex: 1;
+  }
+
+  /* BML LOOP */
+  .bml-section {
+    margin-bottom: 20px;
+  }
+
+  .bml-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #c9581e;
+    margin-bottom: 10px;
+  }
+
+  .bml-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .bml-card {
+    background: #111;
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .bml-card-title {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #c9581e;
+  }
+
+  .bml-card-text {
+    font-size: 12.5px;
+    color: #ddd;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+
+  .bml-arrow {
+    font-size: 18px;
+    color: #c9581e;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    padding: 0 2px;
+  }
+
+  /* TRAP FULL WIDTH */
+  .trap-full {
+    border: 3px solid #222;
+    border-radius: 6px;
+    background: #f8f5ee;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+
+  .trap-header {
+    background: repeating-linear-gradient(
+      -45deg,
+      #222, #222 7px,
+      #c9581e 7px, #c9581e 14px
+    );
+    padding: 7px 12px;
+  }
+
+  .trap-header-text {
+    font-size: 12px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.08em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+
+  .trap-body {
+    padding: 14px 16px;
+  }
+
+  .trap-body p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #333;
+  }
+
+  /* YOUR MOVE */
+  .your-move-box {
+    border-left: 4px solid #c9581e;
+    background: #fff;
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+  }
+
+  .your-move-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #c9581e;
+    margin-bottom: 5px;
+  }
+
+  .your-move-text {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #111;
+    line-height: 1.5;
+  }
+
+  /* NOTES */
+  .notes-box {
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+  }
+
+  .notes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .notes-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #999;
+  }
+
+  .copy-btn {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #c9581e;
+    background: none;
+    border: 1.5px solid #c9581e;
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .copy-btn:hover { background: #c9581e; color: #fff; }
+  .copy-btn.copied { background: #27863a; border-color: #27863a; color: #fff; }
+
+  .notes-textarea {
+    width: 100%;
+    min-height: 80px;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    color: #222;
+    resize: vertical;
+    outline: none;
+    line-height: 1.5;
+    background: #fafafa;
+    transition: border-color 0.15s;
+  }
+
+  .notes-textarea::placeholder { color: #bbb; }
+
+  .notes-textarea:focus {
+    border-color: #c9581e;
+    background: #fff;
+  }
+
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-brand {
+    font-size: 11px;
+    font-weight: 700;
+    color: #bbb;
+    letter-spacing: 0.08em;
+  }
+
+  .footer-ep {
+    font-size: 11px;
+    font-weight: 600;
+    color: #bbb;
+  }
+
+  /* MOBILE */
+  @media (max-width: 600px) {
+    body { padding: 12px 10px; }
+    .slide { padding: 18px 16px; }
+    .headline { font-size: 15px; margin-bottom: 14px; }
+    .series-tag { margin-bottom: 8px; }
+    .pt-row { grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
+    .cell-left, .cell-right { font-size: 12.5px; padding: 11px 13px; }
+    .bml-row { grid-template-columns: 1fr; gap: 6px; }
+    .bml-arrow { display: none; }
+    .bml-card { padding: 11px 13px; }
+    .bml-card-text { font-size: 12px; }
+    .trap-body { padding: 10px 12px; }
+    .trap-body p { font-size: 12px; }
+    .notes-box { padding: 10px 14px; margin-bottom: 10px; }
+    .notes-textarea { font-size: 12.5px; min-height: 70px; }
+    .your-move-box { padding: 10px 14px; margin-bottom: 10px; }
+    .your-move-text { font-size: 12.5px; }
+  }
+</style>
+<script>
+  function copyNotes(btn) {
+    var textarea = btn.closest('.notes-box').querySelector('textarea');
+    var text = textarea.value.trim();
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = 'Copied \u2713';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1500);
+    });
+  }
+</script>
+</head>
+<body>
+<div class="slide">
+
+  <div class="series-tag">Pro Tools for Life &nbsp;/&nbsp; EP04 &nbsp;&mdash;&nbsp; Identity MVP</div>
+
+  <h1 class="headline">You're not boring.<br>You just haven't shipped a hypothesis yet.</h1>
+
+  <div class="pt-row">
+    <div class="pt-col">
+      <div class="pt-header">The Problem</div>
+      <div class="cell-left">No opinions because you haven't tested any. No preferences because you haven't stayed in anything long enough to form one. You've been designing before you've shipped.</div>
+    </div>
+    <div class="pt-col">
+      <div class="pt-header">The Tool</div>
+      <div class="cell-right">Identity MVP. One domain. One hypothesis. 30 days. "I think I care about ___." You're not committing to a personality. You're running a sprint.</div>
+    </div>
+  </div>
+
+  <div class="bml-section">
+    <div class="bml-label">The Loop</div>
+    <div class="bml-row">
+      <div class="bml-card">
+        <div class="bml-card-title">Build</div>
+        <div class="bml-card-text">Pick one domain. Read it, do it, talk about it. 30 days deep.</div>
+      </div>
+      <div class="bml-arrow">&#8594;</div>
+      <div class="bml-card">
+        <div class="bml-card-title">Measure</div>
+        <div class="bml-card-text">One question at day 30: did I lean in or pull back?</div>
+      </div>
+      <div class="bml-arrow">&#8594;</div>
+      <div class="bml-card">
+        <div class="bml-card-title">Learn</div>
+        <div class="bml-card-text">Keep it, pivot, or kill it. The next hypothesis follows from the signal.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="trap-full">
+    <div class="trap-header">
+      <div class="trap-header-text">The Trap</div>
+    </div>
+    <div class="trap-body">
+      <p>Waiting until you feel ready to pick the domain. That feeling is not wisdom. It's the same blank-page problem in a different costume. Pick anything. The signal from a wrong hypothesis is still signal.</p>
+    </div>
+  </div>
+
+  <div class="your-move-box">
+    <div class="your-move-label">Your Move</div>
+    <div class="your-move-text">Fill the blank. "I think I care about ___." One domain. 30 days. Track one signal: lean in or pull back? That's your first data point. Identity is an accumulation of those, not a revelation.</div>
+  </div>
+
+  <div class="notes-box">
+    <div class="notes-header">
+      <div class="notes-label">Your Notes</div>
+      <button class="copy-btn" onclick="copyNotes(this)">Copy</button>
+    </div>
+    <textarea class="notes-textarea" placeholder="Write your hypothesis here — what domain are you testing? What signal are you tracking?"></textarea>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">Pro Tools for Life</div>
+    <div class="footer-ep">EP04 of &#8734;</div>
+  </div>
+
+</div>
+</body>
+</html>
