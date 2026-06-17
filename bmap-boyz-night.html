@@ -1,0 +1,562 @@
+<!-- CANONICAL SOURCE: izzyoj/tools — B=MAP Boyz Night EP07
+     Design rules: prose only (no <br> tags in Fix/Your Move/Trap). Persona: dad bros, boys night engineering. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boys Night Is Not a Negotiation — B=MAP for Dad Bros</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    background: #f0ebe0;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .slide {
+    background: #f0ebe0;
+    width: 100%;
+    max-width: 860px;
+    padding: 36px 44px;
+  }
+
+  .series-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 12px;
+  }
+
+  .headline {
+    font-size: clamp(16px, 3.2vw, 40px);
+    font-weight: 900;
+    line-height: 1.12;
+    color: #111;
+    margin-bottom: 28px;
+    letter-spacing: -0.02em;
+  }
+
+  /* REFRAME TABLE */
+  .table-section {
+    margin-bottom: 20px;
+  }
+
+  .table-headers {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 10px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+
+  .table-header {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #111;
+  }
+
+  .header-spacer {
+    visibility: hidden;
+    font-size: 16px;
+    padding: 0 2px;
+  }
+
+  .table-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .table-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .cell-left {
+    background: #fff;
+    border: 2px solid #222;
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    color: #222;
+    font-weight: 500;
+  }
+
+  .arrow {
+    font-size: 16px;
+    color: #666;
+    font-weight: 700;
+    text-align: center;
+    padding: 0 2px;
+    flex-shrink: 0;
+  }
+
+  .cell-right {
+    background: #fff;
+    border: 2.5px solid #c9581e;
+    border-radius: 22px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    color: #222;
+    font-weight: 500;
+  }
+
+  /* TRAP + FIX ROW */
+  .mid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .trap-box {
+    border: 3px solid #222;
+    border-radius: 6px;
+    background: #f8f5ee;
+    overflow: hidden;
+  }
+
+  .trap-header {
+    background: repeating-linear-gradient(
+      -45deg,
+      #222, #222 7px,
+      #c9581e 7px, #c9581e 14px
+    );
+    padding: 7px 12px;
+  }
+
+  .trap-header-text {
+    font-size: 12px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.08em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+
+  .trap-body {
+    padding: 12px 14px;
+  }
+
+  .trap-body p {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #333;
+  }
+
+  .fix-box {
+    border: 3px solid #111;
+    border-radius: 6px;
+    background: #111;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fix-header {
+    background: #c9581e;
+    padding: 7px 12px;
+  }
+
+  .fix-header-text {
+    font-size: 12px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.08em;
+  }
+
+  .fix-body {
+    padding: 14px 16px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+
+  .fix-text {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.6;
+  }
+
+  /* LEVER BOX */
+  .lever-box {
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+  }
+
+  .lever-box-header {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #c9581e;
+    margin-bottom: 10px;
+  }
+
+  .lever-situation {
+    font-size: 14px;
+    font-weight: 800;
+    color: #111;
+    margin-bottom: 10px;
+    padding-bottom: 9px;
+    border-bottom: 1.5px solid #eee;
+  }
+
+  .lever-situation span {
+    font-size: 10px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .lever-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  .lever-card {
+    border: 1.5px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+
+  .lever-name {
+    font-size: 13px;
+    font-weight: 900;
+    color: #111;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .lever-desc {
+    font-size: 10px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .lever-check {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+    color: #444;
+    padding: 3px 0;
+    border-bottom: 1px solid #f8f8f8;
+  }
+
+  .lever-check:last-of-type {
+    border-bottom: none;
+  }
+
+  .lever-check .tick {
+    font-weight: 900;
+    color: #27863a;
+    font-size: 12px;
+  }
+
+  .lever-unlock {
+    margin-top: 9px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: #111;
+  }
+
+  .lever-badge {
+    font-size: 9px;
+    font-weight: 900;
+    padding: 2px 8px;
+    border-radius: 10px;
+    color: #fff;
+    letter-spacing: 0.06em;
+    background: #c9581e;
+  }
+
+  /* NOTES BOX */
+  .notes-box {
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+  }
+
+  .notes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .notes-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #999;
+  }
+
+  .copy-btn {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #c9581e;
+    background: none;
+    border: 1.5px solid #c9581e;
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .copy-btn:hover { background: #c9581e; color: #fff; }
+  .copy-btn.copied { background: #27863a; border-color: #27863a; color: #fff; }
+
+  .notes-textarea {
+    width: 100%;
+    min-height: 80px;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    color: #222;
+    resize: vertical;
+    outline: none;
+    line-height: 1.5;
+    background: #fafafa;
+    transition: border-color 0.15s;
+  }
+
+  .notes-textarea::placeholder { color: #bbb; }
+  .notes-textarea:focus { border-color: #c9581e; background: #fff; }
+
+  /* YOUR MOVE */
+  .your-move-box {
+    border-left: 4px solid #c9581e;
+    background: #fff;
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+  }
+
+  .your-move-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #c9581e;
+    margin-bottom: 5px;
+  }
+
+  .your-move-text {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #111;
+    line-height: 1.5;
+  }
+
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-brand {
+    font-size: 11px;
+    font-weight: 700;
+    color: #bbb;
+    letter-spacing: 0.08em;
+  }
+
+  .footer-ep {
+    font-size: 11px;
+    font-weight: 600;
+    color: #bbb;
+  }
+
+  /* MOBILE */
+  @media (max-width: 600px) {
+    body { padding: 12px 10px; }
+    .slide { padding: 18px 16px; }
+    .headline { font-size: 15px; margin-bottom: 14px; }
+    .series-tag { margin-bottom: 8px; }
+    .table-section { margin-bottom: 12px; }
+    .table-rows { gap: 6px; }
+    .cell-left, .cell-right { font-size: 12px; padding: 7px 10px; }
+    .mid-row { gap: 8px; margin-bottom: 10px; grid-template-columns: 1fr; }
+    .trap-body { padding: 10px 12px; }
+    .trap-body p { font-size: 11.5px; line-height: 1.5; }
+    .fix-body { padding: 10px 12px; }
+    .fix-text { font-size: 13px; }
+    .lever-box { padding: 11px 14px; margin-bottom: 10px; }
+    .lever-grid { grid-template-columns: 1fr; gap: 8px; }
+    .notes-box { padding: 10px 14px; margin-bottom: 10px; }
+    .notes-textarea { font-size: 12.5px; min-height: 70px; }
+    .your-move-box { padding: 10px 14px; margin-bottom: 12px; }
+    .your-move-text { font-size: 12.5px; }
+    .footer { margin-top: 0; }
+  }
+</style>
+<script>
+  function copyNotes(btn) {
+    var textarea = btn.closest('.notes-box').querySelector('textarea');
+    var text = textarea.value.trim();
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = 'Copied \u2713';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1500);
+    });
+  }
+</script>
+</head>
+<body>
+<div class="slide">
+
+  <div class="series-tag">Pro Tools for Life &nbsp;/&nbsp; EP07 &nbsp;&mdash;&nbsp; B=MAP</div>
+
+  <h1 class="headline">Boys night is not a negotiation. It's a behavior design problem. Here are the three levers.</h1>
+
+  <div class="table-section">
+    <div class="table-headers">
+      <div class="table-header">The Ask</div>
+      <div class="header-spacer">&#8594;</div>
+      <div class="table-header">The Engineer</div>
+    </div>
+    <div class="table-rows">
+      <div class="table-row">
+        <div class="cell-left">"Can I go to boys night?"</div>
+        <div class="arrow">&#8594;</div>
+        <div class="cell-right">Set M first. She knows the night costs her nothing.</div>
+      </div>
+      <div class="table-row">
+        <div class="cell-left">Ask at 5pm Friday, kids everywhere</div>
+        <div class="arrow">&#8594;</div>
+        <div class="cell-right">Set P first. Find the window when she has bandwidth.</div>
+      </div>
+      <div class="table-row">
+        <div class="cell-left">Leave the logistics to sort themselves</div>
+        <div class="arrow">&#8594;</div>
+        <div class="cell-right">Set A first. Conditions done before you open your mouth.</div>
+      </div>
+      <div class="table-row">
+        <div class="cell-left">"Sure, but next time can you..."</div>
+        <div class="arrow">&#8594;</div>
+        <div class="cell-right">She doesn't have to think. She just says yes.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mid-row">
+    <div class="trap-box">
+      <div class="trap-header">
+        <div class="trap-header-text">The Trap</div>
+      </div>
+      <div class="trap-body">
+        <p>You asked at 5pm Friday. Kids were loud. Dinner wasn't sorted. She was already problem-solving three things. M was zero — she felt informed, not considered. A was zero — she'd have to scramble. P was the worst possible window. You pulled zero levers, then wondered why the answer was "sure, but..." Multiply anything by zero and you get zero. That's the formula working against you.</p>
+      </div>
+    </div>
+    <div class="fix-box">
+      <div class="fix-header">
+        <div class="fix-header-text">The Fix</div>
+      </div>
+      <div class="fix-body">
+        <div class="fix-text">B = M &times; A &times; P. If any lever is zero, the behavior doesn't fire. Set all three before the ask. The ask is the last thing, not the first.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lever-box">
+    <div class="lever-box-header">Build Your Yes &mdash; Set All Three Levers</div>
+    <div class="lever-situation">
+      <span>Scenario</span>
+      Boys night Friday. Kids home. Weekend logistics in play.
+    </div>
+    <div class="lever-grid">
+      <div class="lever-card">
+        <div class="lever-name">M &mdash; Motivation</div>
+        <div class="lever-desc">She feels considered</div>
+        <div class="lever-check">Kids sorted for the night <span class="tick">&#10003;</span></div>
+        <div class="lever-check">Dinner handled <span class="tick">&#10003;</span></div>
+        <div class="lever-check">Saturday morning is hers <span class="tick">&#10003;</span></div>
+        <div class="lever-unlock">
+          All three set
+          <span class="lever-badge">M LOCKED</span>
+        </div>
+      </div>
+      <div class="lever-card">
+        <div class="lever-name">A &mdash; Ability</div>
+        <div class="lever-desc">She can say yes easily</div>
+        <div class="lever-check">She's not scrambling <span class="tick">&#10003;</span></div>
+        <div class="lever-check">No load transferred to her <span class="tick">&#10003;</span></div>
+        <div class="lever-check">You've already done it <span class="tick">&#10003;</span></div>
+        <div class="lever-unlock">
+          All three set
+          <span class="lever-badge">A LOCKED</span>
+        </div>
+      </div>
+      <div class="lever-card">
+        <div class="lever-name">P &mdash; Prompt</div>
+        <div class="lever-desc">Right window, right ask</div>
+        <div class="lever-check">Kids are quiet <span class="tick">&#10003;</span></div>
+        <div class="lever-check">Dinner is sorted <span class="tick">&#10003;</span></div>
+        <div class="lever-check">She has bandwidth <span class="tick">&#10003;</span></div>
+        <div class="lever-unlock">
+          All three set
+          <span class="lever-badge">P LOCKED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="your-move-box">
+    <div class="your-move-label">Your Move</div>
+    <div class="your-move-text">Sort the kids before Tuesday. Organise dinner for Friday night. Tell her Saturday morning is hers. Then wait for the right window — when she's got bandwidth, not when she's running three things at once. Walk in and say: "Hey — kids are sorted Friday. Dinner's organised. Saturday morning is yours. Was thinking of catching up with the boys." She doesn't have to think. You already removed every objection before she could form one. The boss will always be the boss. But now you're playing the right game.</div>
+  </div>
+
+  <div class="notes-box">
+    <div class="notes-header">
+      <div class="notes-label">Your Situation</div>
+      <button class="copy-btn" onclick="copyNotes(this)">Copy</button>
+    </div>
+    <textarea class="notes-textarea" placeholder="Map your three levers here. What sets M for her? When is her P window? What does A look like sorted?"></textarea>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">Pro Tools for Life</div>
+    <div class="footer-ep">EP07 of &#8734;</div>
+  </div>
+
+</div>
+</body>
+</html>
