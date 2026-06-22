@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training Planner</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--bg2:#f5f5f7;
+  --accent:#0071e3;--accent-h:#0077ed;
+  --tp:#1d1d1f;--ts:#6e6e73;--tm:#86868b;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:0 4px 12px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.10);
+  --r:12px;--rb:8px;
+  --kb:#D97706;--kb-bg:#FEF3C7;--kb-bd:#F59E0B;
+  --kbx:#1E40AF;--kbx-bg:#DBEAFE;--kbx-bd:#2563EB;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:var(--bg2);color:var(--tp);min-height:100vh;font-size:15px}
+
+/* HEADER */
+.hdr{background:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:200}
+.hdr h1{font-size:19px;font-weight:700}
+.hdr h1 span{color:var(--accent)}
+.wnav{display:flex;align-items:center;gap:10px}
+.wnav button{background:var(--bg2);border:none;border-radius:var(--rb);padding:6px 12px;cursor:pointer;font-size:14px;font-weight:500;color:var(--tp)}
+.wnav button:hover{background:#e5e5ea}
+.wlbl{font-size:13px;font-weight:600;min-width:190px;text-align:center}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:var(--rb);padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--accent-h)}
+.btn-sec{background:var(--bg2);color:var(--tp)}
+.btn-sec:hover{background:#e5e5ea}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-del{background:#ef4444;color:#fff}
+.btn-del:hover{background:#dc2626}
+
+/* OKR PANEL */
+.okr-wrap{background:#fff;margin:14px 20px;border-radius:var(--r);box-shadow:var(--shadow-md);overflow:hidden}
+.okr-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+.okr-hdr:hover{background:#fafafa}
+.okr-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ts)}
+.okr-tog{font-size:11px;color:var(--tm)}
+.okr-body{display:grid;grid-template-columns:190px 1fr 1fr;gap:20px;padding:0 18px 18px;border-top:1px solid #f0f0f0;padding-top:14px}
+.okr-body.collapsed{display:none}
+
+/* OKR Meta */
+.meta-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tm);display:block;margin-bottom:4px}
+.cycle-dates{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.cycle-dates input{border:1px solid #d2d2d7;border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;color:var(--tp);width:118px}
+.cycle-dates input:focus{border-color:var(--accent);outline:none}
+.cycle-sep{font-size:11px;color:var(--tm)}
+.cycle-bar{height:5px;background:#e8e8ed;border-radius:3px;margin-bottom:4px}
+.cycle-fill{height:5px;background:var(--accent);border-radius:3px;transition:width .3s}
+.cycle-days{font-size:11px;color:var(--tm);margin-bottom:12px}
+.meta-reviewed{display:flex;flex-direction:column;gap:4px}
+.meta-reviewed input{border:1px solid #d2d2d7;border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit}
+.meta-reviewed input:focus{border-color:var(--accent);outline:none}
+
+/* OKR Objective */
+.obj-area textarea{width:100%;border:1px solid #d2d2d7;border-radius:var(--rb);padding:9px 12px;font-size:13px;font-family:inherit;resize:vertical;min-height:72px;color:var(--tp);line-height:1.5}
+.obj-area textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(0,113,227,.12)}
+
+/* OKR Key Results */
+.kr-item{margin-bottom:14px}
+.kr-item:last-child{margin-bottom:0}
+.kr-row{display:flex;align-items:flex-start;gap:6px;margin-bottom:6px}
+.kr-input{flex:1;border:none;background:transparent;font-size:13px;color:var(--tp);font-family:inherit;padding:0;line-height:1.4}
+.kr-input:focus{outline:none;color:var(--tp)}
+.kr-pct{font-size:13px;font-weight:700;color:var(--accent);min-width:32px;text-align:right;flex-shrink:0}
+.kr-bar{height:6px;background:#e8e8ed;border-radius:3px;position:relative;cursor:pointer}
+.kr-fill{height:6px;background:var(--accent);border-radius:3px;transition:width .2s}
+.kr-bar input[type=range]{position:absolute;top:-6px;left:0;width:100%;height:18px;opacity:0;cursor:pointer}
+
+/* MAIN */
+.main{display:flex;gap:14px;padding:0 20px 20px}
+
+/* KANBAN */
+.kb-wrap{flex:1;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.kanban{display:grid;grid-template-columns:repeat(7,minmax(128px,1fr));gap:8px;min-width:900px}
+.day-col{background:#fff;border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden;display:flex;flex-direction:column}
+.day-hdr{padding:9px 10px 8px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between}
+.day-name{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ts)}
+.day-date{font-size:10px;color:var(--tm)}
+.day-add{width:20px;height:20px;border-radius:50%;border:none;background:var(--bg2);color:var(--ts);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.day-add:hover{background:var(--accent);color:#fff}
+.day-today .day-name,.day-today .day-date{color:var(--accent)}
+.day-today .day-date{font-weight:600}
+.day-cards{padding:7px;flex:1;display:flex;flex-direction:column;gap:5px;min-height:70px}
+.day-empty{font-size:10px;color:var(--tm);text-align:center;padding:14px 4px;font-style:italic}
+
+/* SESSION CARDS */
+.scard{border-radius:8px;padding:7px 9px;cursor:pointer;transition:transform .1s,box-shadow .1s;border-left:3px solid transparent}
+.scard:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.scard.t-KB{background:var(--kb-bg);border-left-color:var(--kb-bd)}
+.scard.t-KBX{background:var(--kbx-bg);border-left-color:var(--kbx-bd)}
+.scard.s-done{opacity:.6}
+.scard.s-done .ctitle{text-decoration:line-through}
+.scard.s-missed{border-left-color:#ef4444;opacity:.8}
+.scard.s-missed .ctitle{text-decoration:line-through;color:var(--tm)}
+.scard.s-in-progress{box-shadow:0 0 0 2px var(--accent),var(--shadow-sm)}
+.ctop{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.cbadge{font-size:9px;font-weight:700;letter-spacing:.07em;padding:2px 5px;border-radius:4px}
+.t-KB .cbadge{background:var(--kb-bd);color:#fff}
+.t-KBX .cbadge{background:var(--kbx-bd);color:#fff}
+.csdot{width:6px;height:6px;border-radius:50%}
+.s-planned .csdot{background:#d1d5db}
+.s-in-progress .csdot{background:var(--accent)}
+.s-done .csdot{background:#10b981}
+.s-missed .csdot{background:#ef4444}
+.s-swapped .csdot{background:#8b5cf6}
+.ctitle{font-size:11px;font-weight:600;color:var(--tp);margin-bottom:3px}
+.cmeta{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ts)}
+.cflex{font-size:9px;font-style:italic;color:var(--tm)}
+.idots{display:flex;gap:2px}
+.idot{width:4px;height:4px;border-radius:50%;background:#d1d5db}
+.t-KB .idot.on{background:var(--kb)}
+.t-KBX .idot.on{background:var(--kbx)}
+.cnotes{font-size:10px;color:var(--tm);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cresch{margin-top:5px}
+.btn-resch{font-size:10px;padding:2px 7px;background:#fff;border:1px solid #ef4444;border-radius:4px;color:#ef4444;cursor:pointer;font-weight:600}
+.btn-resch:hover{background:#fef2f2}
+
+/* SMART SELECTOR */
+.smart{width:188px;flex-shrink:0}
+.smart-card{background:#fff;border-radius:var(--r);box-shadow:var(--shadow-md);padding:14px}
+.smart-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ts);margin-bottom:10px}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.tbtn{border:1.5px solid #d2d2d7;background:#fff;border-radius:8px;padding:8px 4px;font-size:12px;font-weight:600;cursor:pointer;text-align:center;color:var(--tp);transition:all .15s}
+.tbtn:hover{border-color:var(--accent);color:var(--accent)}
+.tbtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.suggs{display:flex;flex-direction:column;gap:7px}
+.sugg{border-radius:8px;padding:9px;cursor:pointer;transition:transform .1s;border-left:3px solid transparent}
+.sugg:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.sugg.t-KB{background:var(--kb-bg);border-left-color:var(--kb-bd)}
+.sugg.t-KBX{background:var(--kbx-bg);border-left-color:var(--kbx-bd)}
+.stype{font-size:9px;font-weight:700;letter-spacing:.07em;margin-bottom:2px}
+.t-KB .stype{color:var(--kb)}
+.t-KBX .stype{color:var(--kbx)}
+.slabel{font-size:12px;font-weight:600;color:var(--tp);margin-bottom:2px}
+.ssub{font-size:10px;color:var(--ts);margin-bottom:5px}
+.donow{font-size:11px;padding:4px 8px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;width:100%;text-align:center}
+.donow:hover{background:var(--accent-h)}
+.smart-ph{font-size:11px;color:var(--tm);text-align:center;padding:16px 0}
+
+/* SUMMARY STRIP */
+.strip{background:#fff;margin:0 20px 20px;border-radius:var(--r);box-shadow:var(--shadow-sm);padding:12px 18px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.sitem{}
+.slbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tm);margin-bottom:2px}
+.sval{font-size:22px;font-weight:700}
+.sval s2{font-size:12px;font-weight:400;color:var(--ts)}
+.s-kb .sval{color:var(--kb)}
+.s-kbx .sval{color:var(--kbx)}
+.sdiv{width:1px;height:34px;background:#e8e8ed}
+.okr-mini{display:flex;flex-direction:column;gap:5px;margin-top:2px}
+.omrow{display:flex;align-items:center;gap:8px}
+.omwrap{height:4px;background:#e8e8ed;border-radius:2px;width:72px}
+.omfill{height:4px;background:var(--accent);border-radius:2px}
+.ompct{font-size:11px;color:var(--ts);min-width:26px}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:22px;width:350px;max-width:94vw;box-shadow:var(--shadow-lg)}
+.mtitle{font-size:17px;font-weight:700;margin-bottom:18px}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ts);margin-bottom:4px}
+.fg select,.fg input[type=text]{width:100%;border:1px solid #d2d2d7;border-radius:var(--rb);padding:8px 11px;font-size:14px;font-family:inherit;color:var(--tp)}
+.fg select:focus,.fg input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(0,113,227,.12)}
+.ipick{display:flex;gap:7px}
+.iopt{width:34px;height:34px;border-radius:50%;border:2px solid #d2d2d7;background:#fff;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--ts);transition:all .15s}
+.iopt.on{border-color:var(--accent);background:var(--accent);color:#fff}
+.st-opts{display:flex;gap:5px;flex-wrap:wrap}
+.stopt{padding:4px 9px;border-radius:20px;border:1.5px solid #d2d2d7;background:#fff;font-size:11px;font-weight:600;cursor:pointer;color:var(--ts);transition:all .15s}
+.stopt.on{border-color:var(--accent);background:#e8f0fe;color:var(--accent)}
+.stopt[data-s="done"].on{border-color:#10b981;background:#d1fae5;color:#059669}
+.stopt[data-s="missed"].on{border-color:#ef4444;background:#fee2e2;color:#dc2626}
+.stopt[data-s="swapped"].on{border-color:#8b5cf6;background:#ede9fe;color:#7c3aed}
+.mfooter{display:flex;gap:7px;margin-top:18px}
+.mfooter .btn{flex:1}
+
+@media(max-width:768px){
+  .hdr{padding:12px 14px}
+  .wlbl{font-size:12px;min-width:150px}
+  .okr-wrap{margin:10px 12px}
+  .okr-body{grid-template-columns:1fr}
+  .main{flex-direction:column;padding:0 12px 12px}
+  .smart{width:100%}
+  .strip{margin:0 12px 12px;gap:14px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <h1>Training <span>Planner</span></h1>
+  <div class="wnav">
+    <button onclick="shiftWeek(-1)">&#8249;</button>
+    <div class="wlbl" id="wlbl"></div>
+    <button onclick="shiftWeek(1)">&#8250;</button>
+  </div>
+  <button class="btn btn-sm" onclick="openAdd(null)">+ Session</button>
+</div>
+
+<!-- OKR PANEL -->
+<div class="okr-wrap">
+  <div class="okr-hdr" onclick="toggleOKR()">
+    <div class="okr-lbl">OKR &mdash; 21-Day Cycle</div>
+    <div class="okr-tog" id="okrTog">▲ Collapse</div>
+  </div>
+  <div class="okr-body" id="okrBody">
+
+    <div>
+      <span class="meta-lbl">Cycle Period</span>
+      <div class="cycle-dates">
+        <input type="date" id="cycleStart" onchange="saveOKR();renderCycle()">
+        <span class="cycle-sep">to</span>
+        <input type="date" id="cycleEnd" onchange="saveOKR();renderCycle()">
+      </div>
+      <div class="cycle-bar"><div class="cycle-fill" id="cycleFill" style="width:0%"></div></div>
+      <div class="cycle-days" id="cycleDays">Day 1 of 21</div>
+      <div class="meta-reviewed">
+        <span class="meta-lbl">Last Reviewed</span>
+        <input type="date" id="lastReviewed" onchange="saveOKR()">
+      </div>
+    </div>
+
+    <div class="obj-area">
+      <span class="meta-lbl">Objective</span>
+      <textarea id="objText" placeholder="What are you training for this cycle?" oninput="saveOKR()"></textarea>
+    </div>
+
+    <div id="krList"></div>
+
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="kb-wrap">
+    <div class="kanban" id="kanban"></div>
+  </div>
+  <div class="smart">
+    <div class="smart-card">
+      <div class="smart-title">Quick Start</div>
+      <div class="tgrid">
+        <button class="tbtn" data-m="15" onclick="pickTime(15)">15 min</button>
+        <button class="tbtn" data-m="30" onclick="pickTime(30)">30 min</button>
+        <button class="tbtn" data-m="45" onclick="pickTime(45)">45 min</button>
+        <button class="tbtn" data-m="60" onclick="pickTime(60)">60+ min</button>
+      </div>
+      <div class="suggs" id="suggs">
+        <div class="smart-ph">Pick a time above</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUMMARY STRIP -->
+<div class="strip">
+  <div class="sitem s-kb">
+    <div class="slbl">Kettlebell</div>
+    <div class="sval" id="kbSum">0<s2>/0 this week</s2></div>
+  </div>
+  <div class="sdiv"></div>
+  <div class="sitem s-kbx">
+    <div class="slbl">Kickboxing</div>
+    <div class="sval" id="kbxSum">0<s2>/0 this week</s2></div>
+  </div>
+  <div class="sdiv"></div>
+  <div class="sitem">
+    <div class="slbl">OKR Key Results</div>
+    <div class="okr-mini" id="okrMini"></div>
+  </div>
+</div>
+
+<!-- SESSION MODAL -->
+<div class="overlay" id="sessModal">
+  <div class="modal">
+    <div class="mtitle" id="mtitle">Add Session</div>
+    <div class="fg">
+      <label>Type</label>
+      <select id="mType">
+        <option value="KB">Kettlebell (KB) — Flexible</option>
+        <option value="KBX">Kickboxing (KBX) — Scheduled</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Day</label>
+      <select id="mDay"></select>
+    </div>
+    <div class="fg">
+      <label>Duration</label>
+      <select id="mDur">
+        <option value="15">15 min</option>
+        <option value="30" selected>30 min</option>
+        <option value="45">45 min</option>
+        <option value="60">60 min</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Intensity</label>
+      <div class="ipick" id="ipick"></div>
+    </div>
+    <div class="fg" id="statusFg" style="display:none">
+      <label>Status</label>
+      <div class="st-opts">
+        <button class="stopt" data-s="planned" onclick="setSt('planned')">Planned</button>
+        <button class="stopt" data-s="in-progress" onclick="setSt('in-progress')">In Progress</button>
+        <button class="stopt" data-s="done" onclick="setSt('done')">Done</button>
+        <button class="stopt" data-s="missed" onclick="setSt('missed')">Missed</button>
+        <button class="stopt" data-s="swapped" onclick="setSt('swapped')">Swapped</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Notes</label>
+      <input type="text" id="mNotes" placeholder="Focus, drills, feeling...">
+    </div>
+    <div class="mfooter">
+      <button class="btn btn-sec" onclick="closeSess()">Cancel</button>
+      <button class="btn btn-del btn-sm" id="delBtn" onclick="delSess()" style="display:none">Delete</button>
+      <button class="btn" onclick="saveSess()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESCHEDULE MODAL -->
+<div class="overlay" id="reschModal">
+  <div class="modal">
+    <div class="mtitle">Reschedule Session</div>
+    <div class="fg">
+      <label>Move to</label>
+      <select id="rDay"></select>
+    </div>
+    <div class="mfooter">
+      <button class="btn btn-sec" onclick="closeResch()">Cancel</button>
+      <button class="btn" onclick="doResch()">Move Session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== UTILS =====
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const uid = () => Math.random().toString(36).slice(2,9);
+const fmt = d => d.toISOString().slice(0,10);
+const disp = d => d.toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+function monday(d){const x=new Date(d);const day=x.getDay();const diff=day===0?-6:1-day;x.setDate(x.getDate()+diff);x.setHours(0,0,0,0);return x}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+
+// ===== STATE =====
+let weekStart = monday(new Date());
+let editId = null;
+let reschId = null;
+let intensity = 3;
+let status = 'planned';
+
+// ===== STORAGE =====
+function load(){
+  try{return JSON.parse(localStorage.getItem('tp_v2'))||seed()}
+  catch(e){return seed()}
+}
+function save(){localStorage.setItem('tp_v2',JSON.stringify(D))}
+
+function seed(){
+  const ws = monday(new Date());
+  const cs = fmt(ws);
+  const ce = fmt(addDays(ws,20));
+  return {
+    okr:{
+      cycleStart:cs, cycleEnd:ce,
+      objective:'Build a consistent training rhythm that holds regardless of what the week throws at it.',
+      krs:[
+        {id:1,label:'Complete 12 KB sessions this cycle',pct:8},
+        {id:2,label:'Complete 6 KBX sessions this cycle',pct:17},
+        {id:3,label:'Reschedule every missed session same week',pct:100}
+      ],
+      lastReviewed:''
+    },
+    weeks:{}
+  };
+}
+
+let D = load();
+
+function getWeek(ws){return D.weeks[ws]||(D.weeks[ws]=[],D.weeks[ws])}
+function setWeek(ws,arr){D.weeks[ws]=arr;save()}
+
+// Seed current week if empty
+(function seedCurrentWeek(){
+  const ws=fmt(weekStart);
+  if(!D.weeks[ws]||D.weeks[ws].length===0){
+    D.weeks[ws]=[
+      {id:uid(),type:'KB',day:0,dur:30,intensity:3,status:'done',notes:'Morning swings, cleans, press circuit'},
+      {id:uid(),type:'KBX',day:1,dur:60,intensity:4,status:'done',notes:'Bag work + combinations, good session'},
+      {id:uid(),type:'KB',day:2,dur:15,intensity:2,status:'planned',notes:'Quick flow between meetings'},
+      {id:uid(),type:'KBX',day:3,dur:45,intensity:4,status:'missed',notes:'Got called into a thing'},
+      {id:uid(),type:'KB',day:4,dur:30,intensity:3,status:'planned',notes:'Strength focus'},
+      {id:uid(),type:'KBX',day:5,dur:60,intensity:5,status:'planned',notes:'Full Saturday session'},
+    ];
+    save();
+  }
+})();
+
+// ===== OKR =====
+function renderOKR(){
+  const o=D.okr;
+  document.getElementById('cycleStart').value=o.cycleStart||'';
+  document.getElementById('cycleEnd').value=o.cycleEnd||'';
+  document.getElementById('lastReviewed').value=o.lastReviewed||'';
+  document.getElementById('objText').value=o.objective||'';
+  renderCycle();
+  renderKRs();
+  renderOKRMini();
+}
+
+function renderCycle(){
+  const o=D.okr;
+  if(!o.cycleStart||!o.cycleEnd)return;
+  const start=new Date(o.cycleStart);
+  const end=new Date(o.cycleEnd);
+  const today=new Date();
+  const total=Math.round((end-start)/86400000)+1;
+  const passed=Math.max(0,Math.min(total,Math.floor((today-start)/86400000)+1));
+  const pct=Math.round((passed/total)*100);
+  document.getElementById('cycleFill').style.width=pct+'%';
+  document.getElementById('cycleDays').textContent=`Day ${passed} of ${total}`;
+}
+
+function renderKRs(){
+  const krs=D.okr.krs;
+  document.getElementById('krList').innerHTML=`<span class="meta-lbl">Key Results</span>`+krs.map((kr,i)=>`
+    <div class="kr-item" style="margin-top:10px">
+      <div class="kr-row">
+        <input class="kr-input" value="${kr.label}" oninput="D.okr.krs[${i}].label=this.value;save()" placeholder="Key result ${i+1}...">
+        <div class="kr-pct" id="krp${i}">${kr.pct}%</div>
+      </div>
+      <div class="kr-bar">
+        <div class="kr-fill" id="krf${i}" style="width:${kr.pct}%"></div>
+        <input type="range" min="0" max="100" value="${kr.pct}" oninput="updKR(${i},this.value)" onchange="updKR(${i},this.value)">
+      </div>
+    </div>`).join('');
+}
+
+function updKR(i,v){
+  D.okr.krs[i].pct=parseInt(v);
+  const p=document.getElementById('krp'+i);
+  const f=document.getElementById('krf'+i);
+  if(p)p.textContent=v+'%';
+  if(f)f.style.width=v+'%';
+  save();renderOKRMini();
+}
+
+function saveOKR(){
+  D.okr.objective=document.getElementById('objText').value;
+  D.okr.cycleStart=document.getElementById('cycleStart').value;
+  D.okr.cycleEnd=document.getElementById('cycleEnd').value;
+  D.okr.lastReviewed=document.getElementById('lastReviewed').value;
+  save();
+}
+
+function toggleOKR(){
+  const b=document.getElementById('okrBody');
+  const t=document.getElementById('okrTog');
+  b.classList.toggle('collapsed');
+  t.textContent=b.classList.contains('collapsed')?'▼ Expand':'▲ Collapse';
+}
+
+function renderOKRMini(){
+  document.getElementById('okrMini').innerHTML=D.okr.krs.map(kr=>`
+    <div class="omrow">
+      <div class="omwrap"><div class="omfill" style="width:${kr.pct}%"></div></div>
+      <div class="ompct">${kr.pct}%</div>
+    </div>`).join('');
+}
+
+// ===== KANBAN =====
+function renderKanban(){
+  const ws=fmt(weekStart);
+  const we=addDays(weekStart,6);
+  document.getElementById('wlbl').textContent=`${disp(weekStart)} - ${disp(we)}`;
+  const sessions=getWeek(ws);
+  const today=fmt(new Date());
+  document.getElementById('kanban').innerHTML=DAYS.map((dn,di)=>{
+    const dd=addDays(weekStart,di);
+    const isToday=fmt(dd)===today;
+    const ds=sessions.filter(s=>s.day===di);
+    const cards=ds.length?ds.map(s=>card(s)).join(''):`<div class="day-empty">Rest</div>`;
+    return `<div class="day-col${isToday?' day-today':''}">
+      <div class="day-hdr">
+        <div><div class="day-name">${dn}</div><div class="day-date">${disp(dd)}</div></div>
+        <button class="day-add" onclick="openAdd(${di})">+</button>
+      </div>
+      <div class="day-cards">${cards}</div>
+    </div>`;
+  }).join('');
+  renderStrip(sessions);
+}
+
+function card(s){
+  const dots=[1,2,3,4,5].map(i=>`<div class="idot${i<=s.intensity?' on':''}"></div>`).join('');
+  const flex=s.type==='KB'?'<span class="cflex">Flex</span>':'';
+  const resch=s.status==='missed'?`<div class="cresch"><button class="btn-resch" onclick="event.stopPropagation();openResch('${s.id}')">Reschedule</button></div>`:'';
+  const label=s.type==='KB'?'Kettlebell':'Kickboxing';
+  return `<div class="scard t-${s.type} s-${s.status}" onclick="openEdit('${s.id}')">
+    <div class="ctop"><span class="cbadge">${s.type}</span><div class="csdot"></div></div>
+    <div class="ctitle">${label}</div>
+    <div class="cmeta"><span>${s.dur}m</span><div class="idots">${dots}</div>${flex}</div>
+    ${s.notes?`<div class="cnotes">${s.notes}</div>`:''}
+    ${resch}
+  </div>`;
+}
+
+function renderStrip(sessions){
+  const kbD=sessions.filter(s=>s.type==='KB'&&s.status==='done').length;
+  const kbT=sessions.filter(s=>s.type==='KB').length;
+  const kxD=sessions.filter(s=>s.type==='KBX'&&s.status==='done').length;
+  const kxT=sessions.filter(s=>s.type==='KBX').length;
+  document.getElementById('kbSum').innerHTML=`${kbD}<s2>/${kbT} this week</s2>`;
+  document.getElementById('kbxSum').innerHTML=`${kxD}<s2>/${kxT} this week</s2>`;
+}
+
+function shiftWeek(dir){weekStart=addDays(weekStart,dir*7);renderKanban()}
+
+// ===== MODAL HELPERS =====
+function dayOpts(sel){
+  return DAYS.map((d,i)=>{
+    const dt=addDays(weekStart,i);
+    return `<option value="${i}"${i===sel?' selected':''}>${d} ${disp(dt)}</option>`;
+  }).join('');
+}
+
+function buildIPick(sel){
+  return [1,2,3,4,5].map(i=>`<div class="iopt${i===sel?' on':''}" onclick="pickI(${i})">${i}</div>`).join('');
+}
+
+function pickI(v){intensity=v;document.querySelectorAll('.iopt').forEach((e,i)=>e.classList.toggle('on',i+1===v))}
+
+function setSt(s){status=s;document.querySelectorAll('.stopt').forEach(e=>e.classList.toggle('on',e.dataset.s===s))}
+
+// ===== ADD / EDIT =====
+function openAdd(dayIdx){
+  editId=null;intensity=3;status='planned';
+  document.getElementById('mtitle').textContent='Add Session';
+  document.getElementById('mType').value='KB';
+  document.getElementById('mDay').innerHTML=dayOpts(dayIdx!==null?dayIdx:0);
+  document.getElementById('mDur').value='30';
+  document.getElementById('mNotes').value='';
+  document.getElementById('ipick').innerHTML=buildIPick(3);
+  document.getElementById('statusFg').style.display='none';
+  document.getElementById('delBtn').style.display='none';
+  document.getElementById('sessModal').classList.add('open');
+}
+
+function openEdit(id){
+  const ws=fmt(weekStart);
+  const s=getWeek(ws).find(x=>x.id===id);
+  if(!s)return;
+  editId=id;intensity=s.intensity;status=s.status;
+  document.getElementById('mtitle').textContent='Edit Session';
+  document.getElementById('mType').value=s.type;
+  document.getElementById('mDay').innerHTML=dayOpts(s.day);
+  document.getElementById('mDur').value=s.dur;
+  document.getElementById('mNotes').value=s.notes||'';
+  document.getElementById('ipick').innerHTML=buildIPick(s.intensity);
+  document.getElementById('statusFg').style.display='block';
+  document.querySelectorAll('.stopt').forEach(e=>e.classList.toggle('on',e.dataset.s===s.status));
+  document.getElementById('delBtn').style.display='inline-block';
+  document.getElementById('sessModal').classList.add('open');
+}
+
+function closeSess(){document.getElementById('sessModal').classList.remove('open');editId=null}
+
+function saveSess(){
+  const ws=fmt(weekStart);
+  let arr=getWeek(ws);
+  const ns={
+    id:editId||uid(),
+    type:document.getElementById('mType').value,
+    day:parseInt(document.getElementById('mDay').value),
+    dur:parseInt(document.getElementById('mDur').value),
+    intensity,
+    status:editId?status:'planned',
+    notes:document.getElementById('mNotes').value.trim()
+  };
+  if(editId)arr=arr.map(s=>s.id===editId?ns:s);
+  else arr.push(ns);
+  setWeek(ws,arr);closeSess();renderKanban();
+}
+
+function delSess(){
+  if(!editId)return;
+  const ws=fmt(weekStart);
+  setWeek(ws,getWeek(ws).filter(s=>s.id!==editId));
+  closeSess();renderKanban();
+}
+
+// ===== RESCHEDULE =====
+function openResch(id){
+  reschId=id;
+  document.getElementById('rDay').innerHTML=dayOpts(0);
+  document.getElementById('reschModal').classList.add('open');
+}
+function closeResch(){document.getElementById('reschModal').classList.remove('open');reschId=null}
+function doResch(){
+  if(!reschId)return;
+  const ws=fmt(weekStart);
+  const nd=parseInt(document.getElementById('rDay').value);
+  setWeek(ws,getWeek(ws).map(s=>s.id===reschId?{...s,day:nd,status:'planned'}:s));
+  closeResch();renderKanban();
+}
+
+// ===== SMART SELECTOR =====
+function pickTime(mins){
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('on',parseInt(b.dataset.m)===mins));
+  const today=new Date().getDay();
+  const ti=today===0?6:today-1;
+  const cfg={
+    15:[{type:'KB',label:'Quick KB Circuit',sub:'15 min - Intensity 2',dur:15,i:2},{type:'KB',label:'Swing Series',sub:'15 min - Intensity 3',dur:15,i:3}],
+    30:[{type:'KB',label:'KB Flow Session',sub:'30 min - Intensity 3',dur:30,i:3},{type:'KB',label:'Strength Circuit',sub:'30 min - Intensity 4',dur:30,i:4}],
+    45:[{type:'KB',label:'KB Full Session',sub:'45 min - Intensity 4',dur:45,i:4},{type:'KBX',label:'KBX Technique',sub:'45 min - Intensity 3',dur:45,i:3}],
+    60:[{type:'KBX',label:'Full KBX Session',sub:'60 min - Intensity 4',dur:60,i:4},{type:'KBX',label:'KBX + Bag Work',sub:'60 min - Intensity 5',dur:60,i:5},{type:'KB',label:'KB + Core Finisher',sub:'60 min - Intensity 4',dur:60,i:4}]
+  };
+  const list=cfg[mins]||cfg[60];
+  document.getElementById('suggs').innerHTML=list.map(s=>`
+    <div class="sugg t-${s.type}">
+      <div class="stype">${s.type==='KB'?'KETTLEBELL':'KICKBOXING'}</div>
+      <div class="slabel">${s.label}</div>
+      <div class="ssub">${s.sub}</div>
+      <button class="donow" onclick="doNow('${s.type}',${s.dur},${s.i},${ti})">Do this now</button>
+    </div>`).join('');
+}
+
+function doNow(type,dur,i,dayIdx){
+  const ws=fmt(weekStart);
+  const arr=getWeek(ws);
+  arr.push({id:uid(),type,day:dayIdx,dur,intensity:i,status:'in-progress',notes:'Started via Quick Start'});
+  setWeek(ws,arr);renderKanban();
+  document.getElementById('kanban').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ===== KEYBOARD =====
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeSess();closeResch()}
+});
+document.getElementById('sessModal').addEventListener('click',e=>{if(e.target===document.getElementById('sessModal'))closeSess()});
+document.getElementById('reschModal').addEventListener('click',e=>{if(e.target===document.getElementById('reschModal'))closeResch()});
+
+// ===== INIT =====
+renderOKR();
+renderKanban();
+</script>
+</body>
+</html>
