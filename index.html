@@ -259,6 +259,26 @@
     font-weight: 500;
   }
 
+  /* NEW badge + featured card */
+  .card-featured {
+    border: 1.5px solid var(--orange);
+  }
+  .badge-new {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    background: var(--orange);
+    color: var(--white);
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+  .card-ep-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   /* RESPONSIVE */
   @media (max-width: 860px) {
     .grid { grid-template-columns: repeat(2, 1fr); }
@@ -301,17 +321,6 @@
 
 <div class="grid" id="grid">
 
-  <!-- EP04 — Identity -->
-  <a class="card" data-category="identity" href="identity-mvp-one-pager.html">
-    <div class="card-top">
-      <span class="card-cat cat-identity">Identity</span>
-      <span class="card-ep">EP04</span>
-    </div>
-    <p class="card-headline">You're not boring. You just haven't shipped a hypothesis yet.</p>
-    <p class="card-desc">Build your identity like a startup builds a product. Lean loop. One sprint at a time.</p>
-    <span class="card-cta">Use the tool <span class="arrow">→</span></span>
-  </a>
-
   <!-- EP01 — Performance -->
   <a class="card" data-category="performance" href="gym-okrs-one-pager.html">
     <div class="card-top">
@@ -342,6 +351,17 @@
     </div>
     <p class="card-headline">You don't have two decisions to make. You have a sequencing problem.</p>
     <p class="card-desc">WSJF applied to your to-do list. Score it. Rank it. Do the right thing first.</p>
+    <span class="card-cta">Use the tool <span class="arrow">→</span></span>
+  </a>
+
+  <!-- EP04 — Identity -->
+  <a class="card" data-category="identity" href="identity-mvp-one-pager.html">
+    <div class="card-top">
+      <span class="card-cat cat-identity">Identity</span>
+      <span class="card-ep">EP04</span>
+    </div>
+    <p class="card-headline">You're not boring. You just haven't shipped a hypothesis yet.</p>
+    <p class="card-desc">Build your identity like a startup builds a product. Lean loop. One sprint at a time.</p>
     <span class="card-cta">Use the tool <span class="arrow">→</span></span>
   </a>
 
@@ -378,11 +398,14 @@
     <span class="card-cta">Use the tool <span class="arrow">→</span></span>
   </a>
 
-  <!-- EP08 — Performance -->
-  <a class="card" data-category="performance" href="training-kanban-okr.html">
+  <!-- EP08 — Performance (LATEST) -->
+  <a class="card card-featured" data-category="performance" href="training-kanban-okr.html">
     <div class="card-top">
       <span class="card-cat cat-performance">Performance</span>
-      <span class="card-ep">EP08</span>
+      <div class="card-ep-group">
+        <span class="badge-new">New</span>
+        <span class="card-ep">EP08</span>
+      </div>
     </div>
     <p class="card-headline">You're not inconsistent. You just have a plan that breaks on Tuesday.</p>
     <p class="card-desc">KB fills the gaps. KBX holds the slots. Kanban board + OKR cycle for a training system that adapts to your week instead of collapsing when it changes.</p>
