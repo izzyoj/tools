@@ -764,6 +764,7 @@ let sessElapsed = 0, sessStart = 0;
 let setsOk = 0, cyclesOk = 0;
 let tick = null, lastTick = 0;
 let wl = null; // wake lock
+let lastCountdownSec = -1; // tracks last second we beeped to avoid double-fire
 
 function buildSeq() {
   const s = [];
@@ -803,6 +804,7 @@ function goPhase(idx) {
   phase = step.ph;
   phaseTotal = step.dur;
   phaseRem = step.dur;
+  lastCountdownSec = -1; // reset per phase
 
   const p = PC[phase];
   document.getElementById('phaseLbl').textContent = p.lbl;
@@ -849,18 +851,20 @@ function startTick() {
     phaseRem -= dt;
     sessElapsed = (now - sessStart) / 1000;
 
-    // Last-10-second countdown — tick each second from 10 down to 1
-    const currCeil = Math.ceil(phaseRem);
-    const prevCeil = Math.ceil(phaseRem + dt);
-    if (currCeil !== prevCeil && currCeil >= 1 && currCeil <= 10) {
+    // Last-10-second countdown — fire once per displayed second (10 down to 1)
+    // Using a "last fired" tracker avoids the crossing-detection failure on
+    // phases that start at exactly ≤10s (no prevCeil boundary to cross).
+    const remSec = Math.ceil(phaseRem);
+    if (remSec >= 1 && remSec <= 10 && remSec !== lastCountdownSec) {
+      lastCountdownSec = remSec;
       if (cfg.audio === 'sounds') {
-        if (currCeil <= 3) SFX.beep1();
+        if (remSec <= 3) SFX.beep1();
         else SFX.tick();
       }
       if (cfg.audio === 'voice' && phase !== 'countdown') {
-        if (currCeil === 3) speak('Three');
-        else if (currCeil === 2) speak('Two');
-        else if (currCeil === 1) speak('One');
+        if (remSec === 3) speak('Three');
+        else if (remSec === 2) speak('Two');
+        else if (remSec === 1) speak('One');
       }
     }
 
@@ -892,6 +896,11 @@ function togglePause() {
 function exitTimer() {
   if (state === 'running' || state === 'paused') {
     if (!confirm('End this session?')) return;
+    // Save whatever was done — even a partial session is worth keeping
+    const totalSecs = Math.round((Date.now() - sessStart) / 1000);
+    if (totalSecs > 5) {
+      saveHistory({date:new Date().toISOString(), secs:totalSecs, sets:setsOk, cycles:cyclesOk, partial:true});
+    }
   }
   state = 'idle';
   clearInterval(tick); tick = null;
@@ -1140,9 +1149,9 @@ function renderHistory() {
       const day = d.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
       const tm = d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
       html += `<div class="hist-row">
-        <div class="hist-dot"></div>
+        <div class="hist-dot" ${s.partial ? 'style="background:var(--text3)"' : ''}></div>
         <div class="hist-info">
-          <div class="hist-date">${day}</div>
+          <div class="hist-date">${day}${s.partial ? ' <span style="font-size:11px;color:var(--text3);font-weight:500">partial</span>' : ''}</div>
           <div class="hist-meta">${tm} · ${s.sets} sets · ${s.cycles} cycle${s.cycles!==1?'s':''}</div>
         </div>
         <div class="hist-dur">${fmtDur(s.secs)}</div>
