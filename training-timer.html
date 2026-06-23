@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>KB Timer</title>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #1c1c1e;
+  --surface2: #2c2c2e;
+  --border: rgba(255,255,255,0.07);
+  --text: #f5f5f7;
+  --text2: #aeaeb2;
+  --text3: #48484a;
+  --orange: #ff9f0a;
+  --blue: #0a84ff;
+  --teal: #5ac8fa;
+  --green: #30d158;
+  --red: #ff453a;
+  --nav-h: 68px;
+  --safe: env(safe-area-inset-bottom, 16px);
+}
+
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── App Shell ── */
+.app {
+  height: 100vh; height: 100dvh;
+  display: flex; flex-direction: column;
+  overflow: hidden; position: relative;
+  max-width: 430px; margin: 0 auto;
+}
+
+/* ── Screens ── */
+.screen {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding-bottom: calc(var(--nav-h) + var(--safe));
+  display: none; flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+}
+.screen.active { display: flex; }
+#timer-screen { overflow: hidden; padding-bottom: 0; }
+
+/* ── Nav ── */
+.nav {
+  position: fixed; bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%; max-width: 430px;
+  height: calc(var(--nav-h) + var(--safe));
+  padding-bottom: var(--safe);
+  background: rgba(18,18,20,0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border);
+  display: flex; z-index: 100;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.nav.hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(100%); }
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text3); padding: 8px 0;
+  transition: color 0.15s;
+}
+.nav-btn.active { color: var(--orange); }
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn span { font-size: 10px; font-weight: 600; letter-spacing: 0.03em; }
+
+/* ═══════════════════════════════════════════
+   CONFIG SCREEN
+═══════════════════════════════════════════ */
+.cfg-header {
+  padding: 20px 20px 4px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.cfg-title { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; }
+.icon-btn {
+  width: 36px; height: 36px; background: var(--surface2);
+  border: none; border-radius: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2); transition: background 0.1s;
+}
+.icon-btn:active { background: var(--text3); }
+.icon-btn svg { width: 18px; height: 18px; }
+
+/* Audio badge */
+.audio-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin: 6px 20px 8px;
+  background: var(--surface2); border: none;
+  padding: 5px 12px; border-radius: 20px;
+  cursor: pointer; color: var(--text2);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+}
+.audio-pill svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+/* Presets */
+.presets {
+  padding: 4px 20px 12px;
+  display: flex; gap: 8px;
+}
+.preset-btn {
+  flex: 1; padding: 10px 6px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 12px; cursor: pointer;
+  color: var(--text2); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.01em; text-align: center;
+  transition: all 0.15s;
+}
+.preset-btn:active, .preset-btn.active {
+  border-color: var(--orange); color: var(--orange);
+  background: rgba(255,159,10,0.08);
+}
+
+/* Settings group */
+.sg { margin: 0 20px 14px; }
+.sg-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text3);
+  margin-bottom: 7px; padding-left: 4px;
+}
+.sg-list { background: var(--surface); border-radius: 14px; overflow: hidden; }
+.sr {
+  display: flex; align-items: center;
+  padding: 13px 16px; gap: 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background 0.1s; min-height: 52px;
+}
+.sr:last-child { border-bottom: none; }
+.sr:active { background: var(--surface2); }
+.sr-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sr-icon svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sr-name { flex: 1; font-size: 15px; font-weight: 500; }
+.sr-val { font-size: 15px; color: var(--text2); }
+.sr-chev { color: var(--text3); flex-shrink: 0; }
+
+/* Toggle */
+.tog {
+  width: 48px; height: 28px; background: var(--text3);
+  border-radius: 14px; position: relative;
+  transition: background 0.2s; cursor: pointer;
+  border: none; flex-shrink: 0;
+}
+.tog.on { background: var(--green); }
+.tog::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 24px; height: 24px; background: #fff; border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+}
+.tog.on::after { transform: translateX(20px); }
+
+/* Total + Start */
+.total-row {
+  margin: 0 20px 14px; padding: 13px 16px;
+  background: var(--surface); border-radius: 14px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.total-lbl { font-size: 14px; color: var(--text2); font-weight: 500; }
+.total-val { font-size: 14px; font-weight: 700; color: var(--orange); }
+.start-btn {
+  margin: 0 20px 8px; padding: 18px;
+  background: var(--orange); border: none; border-radius: 16px;
+  font-size: 17px; font-weight: 700; color: #000;
+  cursor: pointer; letter-spacing: 0.01em; width: calc(100% - 40px);
+  transition: opacity 0.15s, transform 0.1s;
+}
+.start-btn:active { opacity: 0.82; transform: scale(0.99); }
+
+/* ═══════════════════════════════════════════
+   TIMER SCREEN
+═══════════════════════════════════════════ */
+#timer-screen {
+  background: var(--bg);
+  transition: background 0.5s ease;
+}
+
+.t-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px 8px; flex-shrink: 0;
+}
+.t-pos {
+  font-size: 13px; color: var(--text2); font-weight: 500;
+  letter-spacing: 0.02em; text-align: center; flex: 1;
+}
+
+/* Phase label */
+.phase-lbl {
+  text-align: center; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--text2); padding: 0 20px 6px;
+  flex-shrink: 0; transition: color 0.4s;
+}
+
+/* Ring */
+.ring-area {
+  flex: 1; display: flex; align-items: center;
+  justify-content: center; position: relative;
+  min-height: 0; cursor: pointer;
+}
+.ring-wrap {
+  position: relative; display: flex;
+  align-items: center; justify-content: center;
+}
+.ring-svg {
+  width: clamp(210px, 62vw, 290px);
+  height: clamp(210px, 62vw, 290px);
+}
+.r-bg { fill: none; stroke: var(--surface2); stroke-width: 14; }
+.r-prog {
+  fill: none; stroke: var(--orange); stroke-width: 14;
+  stroke-linecap: round;
+  stroke-dasharray: 678.58; stroke-dashoffset: 0;
+  transform: rotate(-90deg); transform-origin: 50% 50%;
+  transition: stroke-dashoffset 0.15s linear, stroke 0.4s ease;
+}
+.ring-inner {
+  position: absolute; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px; pointer-events: none; text-align: center;
+}
+.ring-time {
+  font-size: clamp(52px, 15vw, 78px);
+  font-weight: 700; letter-spacing: -0.04em;
+  line-height: 1; transition: color 0.3s, opacity 0.3s;
+}
+.ring-sub {
+  font-size: 14px; color: var(--text3);
+  font-weight: 400; letter-spacing: 0.03em;
+}
+.ring-paused {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--text3);
+  margin-top: 2px; opacity: 0; transition: opacity 0.2s;
+}
+.is-paused .ring-paused { opacity: 1; }
+.is-paused .ring-time { opacity: 0.3; }
+
+/* Controls */
+.t-controls {
+  padding: 0 40px 16px;
+  display: flex; gap: 20px;
+  justify-content: center; align-items: center; flex-shrink: 0;
+}
+.ctrl {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--surface); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2); transition: transform 0.1s, background 0.1s;
+}
+.ctrl:active { transform: scale(0.91); background: var(--surface2); }
+.ctrl svg { width: 20px; height: 20px; }
+.ctrl-main {
+  width: 68px; height: 68px;
+  background: var(--orange); color: #000;
+}
+.ctrl-main svg { width: 24px; height: 24px; }
+
+/* Elapsed strip */
+.elapsed {
+  text-align: center; font-size: 12px; color: var(--text3);
+  padding: 2px 0 12px; flex-shrink: 0;
+}
+
+/* Done overlay */
+.done-overlay {
+  position: absolute; inset: 0;
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: var(--bg); z-index: 20; padding: 40px 32px;
+  text-align: center;
+}
+.done-overlay.show { display: flex; }
+.done-emoji { font-size: 56px; margin-bottom: 12px; }
+.done-title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+.done-sub { font-size: 15px; color: var(--text2); margin-top: 4px; }
+.done-stats {
+  display: flex; gap: 32px; margin: 24px 0 28px;
+}
+.ds-val { font-size: 28px; font-weight: 700; }
+.ds-lbl { font-size: 12px; color: var(--text2); margin-top: 3px; letter-spacing: 0.02em; }
+.done-actions { display: flex; gap: 12px; width: 100%; }
+.done-btn {
+  flex: 1; padding: 16px; border-radius: 14px;
+  border: none; cursor: pointer; font-size: 15px; font-weight: 600;
+  transition: opacity 0.15s;
+}
+.done-btn:active { opacity: 0.72; }
+.done-primary { background: var(--orange); color: #000; }
+.done-secondary { background: var(--surface); color: var(--text); }
+
+/* ═══════════════════════════════════════════
+   HISTORY SCREEN
+═══════════════════════════════════════════ */
+.hist-header { padding: 20px 20px 10px; }
+.hist-title { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; }
+
+.hist-empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; color: var(--text3); padding: 40px 20px; text-align: center;
+}
+.hist-empty svg { width: 44px; height: 44px; opacity: 0.35; }
+.hist-empty p { font-size: 15px; line-height: 1.55; }
+
+.hist-list { padding: 4px 20px; }
+.wk-lbl {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text3);
+  margin: 14px 0 6px; padding-left: 4px;
+}
+.wk-group { background: var(--surface); border-radius: 14px; overflow: hidden; margin-bottom: 4px; }
+.hist-row {
+  display: flex; align-items: center;
+  padding: 13px 16px; gap: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.hist-row:last-child { border-bottom: none; }
+.hist-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--orange); flex-shrink: 0;
+}
+.hist-info { flex: 1; }
+.hist-date { font-size: 15px; font-weight: 500; }
+.hist-meta { font-size: 13px; color: var(--text2); margin-top: 2px; }
+.hist-dur { font-size: 15px; font-weight: 600; }
+
+/* ═══════════════════════════════════════════
+   BOTTOM SHEET
+═══════════════════════════════════════════ */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  z-index: 200; opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+.sheet {
+  position: fixed; bottom: 0; left: 50%; z-index: 201;
+  width: 100%; max-width: 430px;
+  background: #1c1c1e; border-radius: 20px 20px 0 0;
+  transform: translateX(-50%) translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  padding-bottom: calc(20px + var(--safe));
+}
+.sheet.open { transform: translateX(-50%) translateY(0); }
+.sheet-handle {
+  width: 36px; height: 4px; background: var(--text3);
+  border-radius: 2px; margin: 12px auto 0; opacity: 0.5;
+}
+.sheet-title {
+  font-size: 17px; font-weight: 600; text-align: center;
+  padding: 14px 20px 10px; border-bottom: 1px solid var(--border);
+}
+.sheet-body { padding: 24px 24px 8px; }
+
+/* Time editor */
+.te {
+  display: flex; align-items: center;
+  justify-content: center; gap: 8px; margin-bottom: 24px;
+}
+.te-unit { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.te-lbl {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text3);
+}
+.te-col {
+  font-size: 52px; font-weight: 300; color: var(--text3);
+  line-height: 1; padding-top: 16px;
+}
+.te-display {
+  font-size: 52px; font-weight: 700; letter-spacing: -0.03em;
+  min-width: 78px; text-align: center; line-height: 1;
+}
+.te-btns { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.te-btn {
+  width: 48px; height: 34px; background: var(--surface2);
+  border: none; border-radius: 8px; cursor: pointer;
+  color: var(--text); font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.1s; font-weight: 300;
+}
+.te-btn:active { background: var(--text3); }
+
+/* Count editor */
+.ce {
+  display: flex; align-items: center;
+  justify-content: center; gap: 28px; margin-bottom: 24px;
+}
+.ce-btn {
+  width: 56px; height: 56px; background: var(--surface2);
+  border: none; border-radius: 50%; cursor: pointer;
+  font-size: 26px; color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.1s; font-weight: 300;
+}
+.ce-btn:active { background: var(--text3); }
+.ce-display {
+  font-size: 68px; font-weight: 700;
+  letter-spacing: -0.04em; min-width: 84px; text-align: center;
+}
+.sheet-done {
+  width: 100%; padding: 16px; background: var(--orange);
+  border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 700; color: #000;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.sheet-done:active { opacity: 0.8; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════════════════════════════════════════
+     CONFIG SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen active" id="cfg">
+
+  <div class="cfg-header">
+    <h1 class="cfg-title">KB Timer</h1>
+    <button class="icon-btn" id="audioBtn" title="Audio mode">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+    </button>
+  </div>
+
+  <button class="audio-pill" id="audioPill">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" id="audioPillIcon">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
+    </svg>
+    <span id="audioPillText">Sound effects</span>
+  </button>
+
+  <!-- Presets -->
+  <div class="presets">
+    <button class="preset-btn" data-p="kbquick">KB Quick</button>
+    <button class="preset-btn" data-p="kbxround">KBX Round</button>
+    <button class="preset-btn" data-p="tabata">Tabata</button>
+  </div>
+
+  <!-- Exercise settings -->
+  <div class="sg">
+    <div class="sg-label">Exercise</div>
+    <div class="sg-list">
+      <div class="sr" data-k="countdown">
+        <div class="sr-icon" style="background:#3a3a3c">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <span class="sr-name">Countdown</span>
+        <span class="sr-val" id="v-countdown">10 sec</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="sr" data-k="warmup">
+        <div class="sr-icon" style="background:#0a3c4a">
+          <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <span class="sr-name">Warmup</span>
+        <span class="sr-val" id="v-warmup">5:00</span>
+        <button class="tog on" id="tog-warmup" onclick="event.stopPropagation();togPhase('warmup')"></button>
+      </div>
+      <div class="sr" data-k="exercise">
+        <div class="sr-icon" style="background:#4a2800">
+          <svg viewBox="0 0 24 24"><line x1="6.5" y1="6.5" x2="17.5" y2="6.5"/><line x1="6.5" y1="17.5" x2="17.5" y2="17.5"/><line x1="4" y1="9" x2="4" y2="15"/><line x1="20" y1="9" x2="20" y2="15"/><rect x="4" y="9" width="4" height="6" rx="1"/><rect x="16" y="9" width="4" height="6" rx="1"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        </div>
+        <span class="sr-name">Exercise</span>
+        <span class="sr-val" id="v-exercise">5:05</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="sr" data-k="rest">
+        <div class="sr-icon" style="background:#00204a">
+          <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </div>
+        <span class="sr-name">Rest</span>
+        <span class="sr-val" id="v-rest">2:15</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="sr" data-k="sets">
+        <div class="sr-icon" style="background:#1c1040">
+          <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="white" stroke="none"/><circle cx="3" cy="12" r="1" fill="white" stroke="none"/><circle cx="3" cy="18" r="1" fill="white" stroke="none"/></svg>
+        </div>
+        <span class="sr-name">Sets</span>
+        <span class="sr-val" id="v-sets">5</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="sr" data-k="cycles">
+        <div class="sr-icon" style="background:#0a2e14">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </div>
+        <span class="sr-name">Cycles</span>
+        <span class="sr-val" id="v-cycles">1</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="sr" data-k="recovery">
+        <div class="sr-icon" style="background:#1e1e20">
+          <svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        </div>
+        <span class="sr-name">Recovery</span>
+        <span class="sr-val" id="v-recovery">5:00</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="sr" data-k="cooldown">
+        <div class="sr-icon" style="background:#0a3c4a">
+          <svg viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>
+        </div>
+        <span class="sr-name">Cooldown</span>
+        <span class="sr-val" id="v-cooldown">5:00</span>
+        <button class="tog on" id="tog-cooldown" onclick="event.stopPropagation();togPhase('cooldown')"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total time -->
+  <div class="total-row">
+    <span class="total-lbl">Total session</span>
+    <span class="total-val" id="totalVal">51:40</span>
+  </div>
+
+  <!-- Start -->
+  <button class="start-btn" id="startBtn">Start</button>
+
+</div><!-- /cfg -->
+
+
+<!-- ═══════════════════════════════════════════
+     TIMER SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen" id="timer">
+
+  <div class="t-header">
+    <button class="icon-btn" id="exitBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="t-pos" id="tPos">—</div>
+    <button class="icon-btn" id="muteBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" id="muteIco">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="phase-lbl" id="phaseLbl">Get Ready</div>
+
+  <div class="ring-area" id="ringArea" onclick="togglePause()">
+    <div class="ring-wrap">
+      <svg class="ring-svg" viewBox="0 0 240 240">
+        <circle class="r-bg" cx="120" cy="120" r="108"/>
+        <circle class="r-prog" cx="120" cy="120" r="108" id="rProg"/>
+      </svg>
+      <div class="ring-inner">
+        <div class="ring-time" id="rTime">00</div>
+        <div class="ring-sub" id="rSub">00:00 elapsed</div>
+        <div class="ring-paused">PAUSED</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="elapsed" id="elapsedLabel">Tap ring to pause</div>
+
+  <div class="t-controls">
+    <button class="ctrl" id="skipBtn" title="Skip phase">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <polygon points="5 4 15 12 5 20 5 4" fill="currentColor" stroke="none"/>
+        <line x1="19" y1="5" x2="19" y2="19"/>
+      </svg>
+    </button>
+    <button class="ctrl ctrl-main" id="pauseBtn" onclick="togglePause()">
+      <svg viewBox="0 0 24 24" fill="currentColor" id="pauseIco">
+        <rect x="6" y="4" width="4" height="16" rx="1"/>
+        <rect x="14" y="4" width="4" height="16" rx="1"/>
+      </svg>
+    </button>
+    <button class="ctrl" id="stopBtn" title="Stop">
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+    </button>
+  </div>
+
+  <div class="elapsed" id="elapsedRow"></div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="doneOvl">
+    <div class="done-emoji">🥊</div>
+    <div class="done-title">Session done</div>
+    <div class="done-sub" id="doneSub">Great work</div>
+    <div class="done-stats">
+      <div>
+        <div class="ds-val" id="dTime">—</div>
+        <div class="ds-lbl">Time</div>
+      </div>
+      <div>
+        <div class="ds-val" id="dSets">—</div>
+        <div class="ds-lbl">Sets</div>
+      </div>
+      <div>
+        <div class="ds-val" id="dCyc">—</div>
+        <div class="ds-lbl">Cycles</div>
+      </div>
+    </div>
+    <div class="done-actions">
+      <button class="done-btn done-secondary" onclick="exitTimer()">Back</button>
+      <button class="done-btn done-primary" onclick="restartTimer()">Go again</button>
+    </div>
+  </div>
+
+</div><!-- /timer -->
+
+
+<!-- ═══════════════════════════════════════════
+     HISTORY SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen" id="history">
+  <div class="hist-header">
+    <h1 class="hist-title">History</h1>
+  </div>
+  <div id="histContent"></div>
+</div>
+
+
+<!-- ── Nav ── -->
+<nav class="nav" id="nav">
+  <button class="nav-btn active" data-sc="cfg" onclick="goScreen('cfg',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+    <span>Timer</span>
+  </button>
+  <button class="nav-btn" data-sc="history" onclick="goScreen('history',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    <span>History</span>
+  </button>
+</nav>
+
+</div><!-- /app -->
+
+<!-- ── Sheet ── -->
+<div class="overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="sheetTitle">Setting</div>
+  <div class="sheet-body" id="sheetBody"></div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════
+   DEFAULTS & PRESETS
+════════════════════════════════════════════ */
+const D = {
+  countdown:10, warmupOn:true, warmup:300,
+  exercise:305, rest:135, sets:5, cycles:1,
+  recovery:300, cooldownOn:true, cooldown:300,
+  audio:'sounds'
+};
+
+const PRESETS = {
+  kbquick:  {exercise:20,  rest:10,  sets:8, cycles:1, warmupOn:false, cooldownOn:false, warmup:0,   cooldown:0,   countdown:10, recovery:60},
+  kbxround: {exercise:180, rest:60,  sets:3, cycles:3, warmupOn:true,  cooldownOn:true,  warmup:120, cooldown:120, countdown:10, recovery:300},
+  tabata:   {exercise:20,  rest:10,  sets:8, cycles:1, warmupOn:false, cooldownOn:false, warmup:0,   cooldown:0,   countdown:10, recovery:0},
+};
+
+let cfg = {...D};
+
+/* ════════════════════════════════════════════
+   AUDIO ENGINE
+════════════════════════════════════════════ */
+let actx = null;
+let muted = false;
+
+function getActx() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+
+function tone(freq, dur, type='sine', vol=0.22, decay=0.9) {
+  if (muted || cfg.audio==='silence') return;
+  try {
+    const ctx = getActx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur * decay);
+    o.start(); o.stop(ctx.currentTime + dur);
+  } catch(e){}
+}
+
+function toneAt(freq, dur, delay, type='sine', vol=0.22) {
+  setTimeout(() => tone(freq, dur, type, vol), delay);
+}
+
+const SFX = {
+  countdown: () => tone(880, 0.09, 'sine', 0.18),
+  warmup:    () => { tone(587, 1.2, 'sine', 0.16, 0.92); toneAt(880, 0.8, 60, 'sine', 0.1); },
+  work:      () => { tone(1047, 0.1, 'square', 0.12); toneAt(1319, 0.18, 110, 'square', 0.15); },
+  rest:      () => tone(440, 0.55, 'sine', 0.15, 0.82),
+  recovery:  () => tone(440, 0.55, 'sine', 0.15, 0.82),
+  cooldown:  () => { tone(523, 2.0, 'sine', 0.16, 0.96); toneAt(659, 1.6, 50, 'sine', 0.1); },
+  finish:    () => { [523,659,784].forEach((f,i) => toneAt(f, 0.45, i*210, 'sine', 0.22)); },
+  beep3:     () => { for(let i=0;i<3;i++) toneAt(1047, 0.11, i*320, 'sine', 0.18); },
+};
+
+function speak(text) {
+  if (cfg.audio !== 'voice' || muted || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.0; u.pitch = 1.0;
+  speechSynthesis.speak(u);
+}
+
+const PHASE_SPEAK = {
+  countdown:'Get ready', warmup:'Warm up', work:'Work',
+  rest:'Rest', recovery:'Recovery', cooldown:'Cool down',
+  finish:'Session complete. Great work.'
+};
+
+function playPhase(phase) {
+  if (cfg.audio === 'sounds' && SFX[phase]) SFX[phase]();
+  if (cfg.audio === 'voice') speak(PHASE_SPEAK[phase] || '');
+}
+
+/* ════════════════════════════════════════════
+   PHASE CONFIG
+════════════════════════════════════════════ */
+const PC = {
+  countdown: {lbl:'Get Ready', color:'#aeaeb2', bg:'#0a0a0a'},
+  warmup:    {lbl:'Warm Up',   color:'#5ac8fa', bg:'#021520'},
+  work:      {lbl:'Work',      color:'#ff9f0a', bg:'#140900'},
+  rest:      {lbl:'Rest',      color:'#0a84ff', bg:'#000d1e'},
+  recovery:  {lbl:'Recovery',  color:'#636366', bg:'#0e0e10'},
+  cooldown:  {lbl:'Cool Down', color:'#5ac8fa', bg:'#021520'},
+  done:      {lbl:'Done',      color:'#30d158', bg:'#011809'},
+};
+
+/* ════════════════════════════════════════════
+   TIMER STATE
+════════════════════════════════════════════ */
+let seq = [], seqIdx = 0;
+let state = 'idle'; // idle | running | paused
+let phase = null;
+let phaseRem = 0, phaseTotal = 0;
+let sessElapsed = 0, sessStart = 0;
+let setsOk = 0, cyclesOk = 0;
+let tick = null, lastTick = 0;
+let wl = null; // wake lock
+
+function buildSeq() {
+  const s = [];
+  s.push({ph:'countdown', dur:cfg.countdown});
+  if (cfg.warmupOn && cfg.warmup > 0) s.push({ph:'warmup', dur:cfg.warmup});
+  for (let c=1; c<=cfg.cycles; c++) {
+    for (let i=1; i<=cfg.sets; i++) {
+      s.push({ph:'work', dur:cfg.exercise, set:i, cyc:c});
+      s.push({ph:'rest', dur:cfg.rest, set:i, cyc:c});
+    }
+    if (c < cfg.cycles && cfg.recovery > 0)
+      s.push({ph:'recovery', dur:cfg.recovery, cyc:c});
+  }
+  if (cfg.cooldownOn && cfg.cooldown > 0) s.push({ph:'cooldown', dur:cfg.cooldown});
+  return s;
+}
+
+function startSession() {
+  getActx(); // unlock on user gesture
+  seq = buildSeq();
+  seqIdx = 0; setsOk = 0; cyclesOk = 0;
+  sessStart = Date.now(); sessElapsed = 0;
+  document.getElementById('doneOvl').classList.remove('show');
+  document.getElementById('ringArea').classList.remove('is-paused');
+  document.getElementById('pauseIco').innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+  showScreen('timer');
+  goPhase(0);
+  state = 'running';
+  startTick();
+  acquireWL();
+}
+
+function goPhase(idx) {
+  if (idx >= seq.length) { endSession(); return; }
+  seqIdx = idx;
+  const step = seq[idx];
+  phase = step.ph;
+  phaseTotal = step.dur;
+  phaseRem = step.dur;
+
+  const p = PC[phase];
+  document.getElementById('phaseLbl').textContent = p.lbl;
+  document.getElementById('phaseLbl').style.color = p.color;
+  document.getElementById('timer').style.background = p.bg;
+  document.getElementById('rProg').style.stroke = p.color;
+
+  const pos = step.set
+    ? `Set ${step.set} of ${cfg.sets}  ·  Cycle ${step.cyc} of ${cfg.cycles}`
+    : p.lbl;
+  document.getElementById('tPos').textContent = pos;
+
+  playPhase(phase);
+  updateRing();
+}
+
+function endSession() {
+  state = 'idle';
+  clearInterval(tick); tick = null;
+  cyclesOk = cfg.cycles;
+  setsOk = cfg.sets * cfg.cycles;
+  playPhase('finish');
+
+  const totalSecs = Math.round((Date.now() - sessStart) / 1000);
+  saveHistory({date:new Date().toISOString(), secs:totalSecs, sets:setsOk, cycles:cyclesOk});
+
+  document.getElementById('dTime').textContent = fmtDur(totalSecs);
+  document.getElementById('dSets').textContent = setsOk;
+  document.getElementById('dCyc').textContent = cyclesOk;
+  document.getElementById('timer').style.background = PC.done.bg;
+  document.getElementById('doneOvl').classList.add('show');
+  releaseWL();
+}
+
+function startTick() {
+  clearInterval(tick);
+  lastTick = 0;
+  tick = setInterval(() => {
+    if (state !== 'running') return;
+    const now = Date.now();
+    if (!lastTick) { lastTick = now; return; }
+    const dt = (now - lastTick) / 1000;
+    lastTick = now;
+    phaseRem -= dt;
+    sessElapsed = (now - sessStart) / 1000;
+
+    // 3-sec warning
+    const ceil = Math.ceil(phaseRem);
+    const prevCeil = Math.ceil(phaseRem + dt);
+    if (ceil === 3 && prevCeil > 3) {
+      if (cfg.audio === 'sounds') SFX.beep3();
+      if (cfg.audio === 'voice' && phase !== 'countdown') speak('Three, two, one');
+    }
+
+    if (phaseRem <= 0) {
+      if (phase === 'rest') setsOk++;
+      goPhase(seqIdx + 1);
+    } else {
+      updateRing();
+    }
+  }, 80);
+}
+
+function togglePause() {
+  if (state === 'running') {
+    state = 'paused';
+    lastTick = 0;
+    document.getElementById('ringArea').classList.add('is-paused');
+    document.getElementById('pauseIco').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+    document.getElementById('elapsedLabel').textContent = 'Tap ring to resume';
+  } else if (state === 'paused') {
+    state = 'running';
+    lastTick = 0;
+    document.getElementById('ringArea').classList.remove('is-paused');
+    document.getElementById('pauseIco').innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+    document.getElementById('elapsedLabel').textContent = 'Tap ring to pause';
+  }
+}
+
+function exitTimer() {
+  if (state === 'running' || state === 'paused') {
+    if (!confirm('End this session?')) return;
+  }
+  state = 'idle';
+  clearInterval(tick); tick = null;
+  releaseWL();
+  document.getElementById('timer').style.background = '';
+  document.getElementById('doneOvl').classList.remove('show');
+  document.getElementById('ringArea').classList.remove('is-paused');
+  goScreen('cfg', document.querySelector('[data-sc="cfg"]'));
+}
+
+function restartTimer() {
+  document.getElementById('doneOvl').classList.remove('show');
+  startSession();
+}
+
+/* ════════════════════════════════════════════
+   RING DISPLAY
+════════════════════════════════════════════ */
+const CIRC = 678.58;
+
+function updateRing() {
+  const rem = Math.max(0, phaseRem);
+  const offset = CIRC * ((phaseTotal - rem) / Math.max(phaseTotal, 1));
+  document.getElementById('rProg').style.strokeDashoffset = Math.min(offset, CIRC);
+
+  // Big time display
+  const secs = Math.ceil(rem);
+  document.getElementById('rTime').textContent =
+    secs < 60 ? String(secs).padStart(2,'0') : fmtTime(secs);
+
+  // Sub line
+  const el = Math.floor(sessElapsed);
+  document.getElementById('rSub').textContent = fmtTime(el) + ' elapsed';
+}
+
+/* ════════════════════════════════════════════
+   WAKE LOCK
+════════════════════════════════════════════ */
+async function acquireWL() {
+  try { if ('wakeLock' in navigator) wl = await navigator.wakeLock.request('screen'); } catch(e){}
+}
+function releaseWL() { if (wl) { wl.release(); wl = null; } }
+
+/* ════════════════════════════════════════════
+   CONFIG
+════════════════════════════════════════════ */
+function loadCfg() {
+  try { cfg = {...D, ...JSON.parse(localStorage.getItem('kbt') || '{}')}; } catch(e){ cfg={...D}; }
+  renderCfg();
+}
+function saveCfg() { localStorage.setItem('kbt', JSON.stringify(cfg)); }
+
+function renderCfg() {
+  const fts = (v) => v < 60 ? v + ' sec' : fmtTime(v);
+  document.getElementById('v-countdown').textContent = fts(cfg.countdown);
+  document.getElementById('v-warmup').textContent    = fmtTime(cfg.warmup);
+  document.getElementById('v-exercise').textContent  = fmtTime(cfg.exercise);
+  document.getElementById('v-rest').textContent      = fmtTime(cfg.rest);
+  document.getElementById('v-sets').textContent      = cfg.sets;
+  document.getElementById('v-cycles').textContent    = cfg.cycles;
+  document.getElementById('v-recovery').textContent  = fmtTime(cfg.recovery);
+  document.getElementById('v-cooldown').textContent  = fmtTime(cfg.cooldown);
+  tog('warmup', cfg.warmupOn);
+  tog('cooldown', cfg.cooldownOn);
+  renderAudio();
+  renderTotal();
+}
+
+function tog(k, on) {
+  const el = document.getElementById('tog-'+k);
+  if (el) el.classList.toggle('on', on);
+}
+
+function togPhase(k) {
+  cfg[k+'On'] = !cfg[k+'On'];
+  tog(k, cfg[k+'On']);
+  renderTotal(); saveCfg();
+}
+
+function renderTotal() {
+  let t = cfg.countdown;
+  if (cfg.warmupOn) t += cfg.warmup;
+  t += (cfg.exercise + cfg.rest) * cfg.sets * cfg.cycles;
+  t += cfg.recovery * Math.max(0, cfg.cycles - 1);
+  if (cfg.cooldownOn) t += cfg.cooldown;
+  document.getElementById('totalVal').textContent = fmtDur(t);
+}
+
+/* Audio */
+const AMODES = ['sounds','voice','silence'];
+const ALBLS = {sounds:'Sound effects', voice:'Voice callouts', silence:'Silence'};
+const AICONS = {
+  sounds: `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>`,
+  voice:  `<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>`,
+  silence:`<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>`,
+};
+
+function renderAudio() {
+  const m = cfg.audio || 'sounds';
+  document.getElementById('audioPillText').textContent = ALBLS[m];
+  document.getElementById('audioPillIcon').innerHTML = AICONS[m];
+  document.getElementById('audioBtn').querySelector('svg').innerHTML = AICONS[m];
+}
+
+function cycleAudio() {
+  const i = AMODES.indexOf(cfg.audio);
+  cfg.audio = AMODES[(i+1) % AMODES.length];
+  saveCfg(); renderAudio();
+  if (cfg.audio === 'sounds') getActx();
+}
+
+/* Presets */
+function applyPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  cfg = {...cfg, ...p};
+  saveCfg(); renderCfg();
+  document.querySelectorAll('.preset-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.p === name));
+}
+
+/* ════════════════════════════════════════════
+   BOTTOM SHEET
+════════════════════════════════════════════ */
+let sKey = null, sMins = 0, sSecs = 0, sCount = 1;
+const TIME_KEYS = ['countdown','warmup','exercise','rest','recovery','cooldown'];
+const COUNT_KEYS = ['sets','cycles'];
+const SHEET_LBLS = {countdown:'Countdown',warmup:'Warmup',exercise:'Exercise',rest:'Rest',sets:'Sets',cycles:'Cycles',recovery:'Recovery',cooldown:'Cooldown'};
+
+function openSheet(k) {
+  sKey = k;
+  document.getElementById('sheetTitle').textContent = SHEET_LBLS[k] || k;
+  if (TIME_KEYS.includes(k)) {
+    const v = cfg[k] || 0;
+    sMins = Math.floor(v / 60);
+    sSecs = v % 60;
+    document.getElementById('sheetBody').innerHTML = `
+      <div class="te">
+        <div class="te-unit">
+          <div class="te-lbl">Min</div>
+          <div class="te-btns">
+            <button class="te-btn" onclick="adjM(1)">+</button>
+            <div class="te-display" id="sm">${pad(sMins)}</div>
+            <button class="te-btn" onclick="adjM(-1)">−</button>
+          </div>
+        </div>
+        <div class="te-col">:</div>
+        <div class="te-unit">
+          <div class="te-lbl">Sec</div>
+          <div class="te-btns">
+            <button class="te-btn" onclick="adjS(5)">+</button>
+            <div class="te-display" id="ss">${pad(sSecs)}</div>
+            <button class="te-btn" onclick="adjS(-5)">−</button>
+          </div>
+        </div>
+      </div>
+      <button class="sheet-done" onclick="confirmSheet()">Done</button>`;
+  } else if (COUNT_KEYS.includes(k)) {
+    sCount = cfg[k] || 1;
+    const max = k === 'sets' ? 20 : 10;
+    document.getElementById('sheetBody').innerHTML = `
+      <div class="ce">
+        <button class="ce-btn" onclick="adjC(-1,1)">−</button>
+        <div class="ce-display" id="sc">${sCount}</div>
+        <button class="ce-btn" onclick="adjC(1,${max})">+</button>
+      </div>
+      <button class="sheet-done" onclick="confirmSheet()">Done</button>`;
+  }
+  document.getElementById('sheetOverlay').classList.add('open');
+  document.getElementById('sheet').classList.add('open');
+}
+
+function closeSheet() {
+  document.getElementById('sheetOverlay').classList.remove('open');
+  document.getElementById('sheet').classList.remove('open');
+}
+
+function adjM(d) { sMins = Math.max(0, Math.min(99, sMins+d)); upd('sm', pad(sMins)); }
+function adjS(d) { sSecs = Math.max(0, Math.min(55, sSecs+d)); upd('ss', pad(sSecs)); }
+function adjC(d, bound) {
+  sCount = d>0 ? Math.min(bound, sCount+1) : Math.max(1, sCount-1);
+  upd('sc', sCount);
+}
+function upd(id, v) { const el=document.getElementById(id); if(el) el.textContent=v; }
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function confirmSheet() {
+  if (!sKey) return;
+  if (TIME_KEYS.includes(sKey)) cfg[sKey] = sMins*60 + sSecs;
+  else cfg[sKey] = sCount;
+  saveCfg(); renderCfg(); closeSheet();
+  // clear active preset
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+}
+
+/* ════════════════════════════════════════════
+   HISTORY
+════════════════════════════════════════════ */
+function saveHistory(s) {
+  const h = JSON.parse(localStorage.getItem('kbt_h') || '[]');
+  h.unshift(s);
+  if (h.length > 30) h.pop();
+  localStorage.setItem('kbt_h', JSON.stringify(h));
+}
+
+function renderHistory() {
+  const h = JSON.parse(localStorage.getItem('kbt_h') || '[]');
+  const c = document.getElementById('histContent');
+  if (!h.length) {
+    c.innerHTML = `<div class="hist-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <p>No sessions yet.<br>Your sessions appear here<br>automatically after each workout.</p>
+    </div>`;
+    return;
+  }
+
+  // Group by week
+  const groups = {};
+  h.forEach(s => {
+    const d = new Date(s.date);
+    const mon = new Date(d);
+    mon.setDate(d.getDate() - ((d.getDay()+6)%7));
+    const key = mon.toISOString().slice(0,10);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(s);
+  });
+
+  const now = new Date();
+  const thisMon = new Date(now);
+  thisMon.setDate(now.getDate() - ((now.getDay()+6)%7));
+  thisMon.setHours(0,0,0,0);
+
+  let html = '<div class="hist-list">';
+  for (const [key, rows] of Object.entries(groups)) {
+    const wDate = new Date(key);
+    const isThis = wDate >= thisMon;
+    const wLbl = isThis ? 'This week'
+      : wDate.toLocaleDateString('en-AU',{day:'numeric',month:'short'}) + ' week';
+    html += `<div class="wk-lbl">${wLbl}</div><div class="wk-group">`;
+    rows.forEach(s => {
+      const d = new Date(s.date);
+      const day = d.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+      const tm = d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+      html += `<div class="hist-row">
+        <div class="hist-dot"></div>
+        <div class="hist-info">
+          <div class="hist-date">${day}</div>
+          <div class="hist-meta">${tm} · ${s.sets} sets · ${s.cycles} cycle${s.cycles!==1?'s':''}</div>
+        </div>
+        <div class="hist-dur">${fmtDur(s.secs)}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  c.innerHTML = html;
+}
+
+/* ════════════════════════════════════════════
+   SCREEN ROUTING
+════════════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const nav = document.getElementById('nav');
+  if (id === 'timer') {
+    nav.classList.add('hidden');
+  } else {
+    nav.classList.remove('hidden');
+    if (id === 'history') renderHistory();
+  }
+}
+
+function goScreen(id, btn) {
+  showScreen(id);
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+/* ════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════ */
+function fmtTime(s) {
+  if (!s || s<=0) return '0:00';
+  return `${Math.floor(s/60)}:${pad(s%60)}`;
+}
+
+function fmtDur(s) {
+  if (!s||s<=0) return '0:00';
+  const h = Math.floor(s/3600);
+  const m = Math.floor((s%3600)/60);
+  const sec = s%60;
+  if (h) return `${h}h ${m}m`;
+  if (m) return sec ? `${m}m ${sec}s` : `${m}m`;
+  return `${sec}s`;
+}
+
+/* ════════════════════════════════════════════
+   EVENT WIRING
+════════════════════════════════════════════ */
+document.getElementById('startBtn').addEventListener('click', startSession);
+document.getElementById('audioBtn').addEventListener('click', cycleAudio);
+document.getElementById('audioPill').addEventListener('click', cycleAudio);
+document.getElementById('exitBtn').addEventListener('click', exitTimer);
+document.getElementById('stopBtn').addEventListener('click', exitTimer);
+document.getElementById('skipBtn').addEventListener('click', () => {
+  if (state === 'idle') return;
+  lastTick = 0;
+  if (phase === 'rest') setsOk++;
+  goPhase(seqIdx + 1);
+});
+document.getElementById('muteBtn').addEventListener('click', () => {
+  muted = !muted;
+  document.getElementById('muteBtn').style.color = muted ? 'var(--red)' : '';
+  document.getElementById('muteIco').innerHTML = muted
+    ? `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>`
+    : `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>`;
+});
+
+// Config rows
+document.querySelectorAll('.sr[data-k]').forEach(r =>
+  r.addEventListener('click', () => openSheet(r.dataset.k)));
+
+// Presets
+document.querySelectorAll('.preset-btn').forEach(b =>
+  b.addEventListener('click', () => applyPreset(b.dataset.p)));
+
+// Re-acquire wake lock on visibility change
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state === 'running') acquireWL();
+});
+
+/* ════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════ */
+loadCfg();
+</script>
+</body>
+</html>
