@@ -135,32 +135,65 @@ html, body {
 .sg-label {
   font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--text3);
-  margin-bottom: 7px; padding-left: 4px;
+  margin-bottom: 5px; padding-left: 4px;
   display: flex; align-items: center; justify-content: space-between;
 }
-.sg-label-add {
-  font-size: 11px; font-weight: 700; color: var(--orange);
-  background: none; border: none; cursor: pointer;
-  letter-spacing: 0.06em; text-transform: uppercase;
+.task-guidance-pill {
+  font-size: 10px; font-weight: 700; color: var(--orange);
+  background: rgba(255,159,10,0.12); border-radius: 20px;
+  padding: 3px 9px; letter-spacing: 0.04em; text-transform: none;
+}
+.task-guidance-tip {
+  font-size: 12px; color: var(--text3); line-height: 1.55;
+  padding: 0 4px 8px; font-weight: 400;
 }
 .sg-list { background: var(--surface); border-radius: 14px; overflow: hidden; }
 
-/* Task input row */
-.task-input-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
+/* Always-visible task input */
+.task-add-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; border-bottom: 1px solid var(--border);
+  cursor: text;
 }
-.task-input {
+.task-add-icon {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px dashed var(--orange); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--orange); transition: background 0.15s;
+}
+.task-add-row:focus-within .task-add-icon {
+  background: var(--orange); border-color: var(--orange); color: #000;
+}
+.task-add-input {
   flex: 1; background: none; border: none; outline: none;
   color: var(--text); font-size: 15px; font-weight: 500;
   font-family: inherit;
 }
-.task-input::placeholder { color: var(--text3); }
-.task-input-submit {
-  background: none; border: none; cursor: pointer;
-  color: var(--orange); font-size: 22px; line-height: 1;
-  padding: 0 2px; display: flex; align-items: center;
+.task-add-input::placeholder { color: var(--text3); font-weight: 400; font-size: 14px; }
+.task-add-btn {
+  background: var(--orange); border: none; border-radius: 8px;
+  color: #000; font-size: 15px; font-weight: 800;
+  width: 30px; height: 30px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.15s; pointer-events: none;
+}
+.task-add-btn.show { opacity: 1; pointer-events: auto; }
+
+/* Ghost task items */
+.task-ghost {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  cursor: text;
+}
+.task-ghost:last-child { border-bottom: none; }
+.task-ghost-check {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px dashed var(--text3); flex-shrink: 0;
+  flex-shrink: 0;
+}
+.task-ghost-name {
+  flex: 1; font-size: 14px; color: var(--text3);
+  font-style: italic; font-weight: 400;
 }
 
 /* Task item */
@@ -194,7 +227,6 @@ html, body {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--orange); flex-shrink: 0;
 }
-
 .task-drag {
   color: var(--text3); cursor: grab; flex-shrink: 0;
   display: flex; align-items: center;
@@ -208,12 +240,6 @@ html, body {
   background: var(--red); border: none; color: #fff;
   font-size: 12px; font-weight: 700; letter-spacing: 0.01em;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-}
-
-/* Empty state */
-.task-empty {
-  padding: 22px 16px; text-align: center;
-  color: var(--text3); font-size: 14px; line-height: 1.6;
 }
 
 /* Settings group */
@@ -624,10 +650,18 @@ html, body {
   <div class="sg">
     <div class="sg-label">
       <span>Tasks</span>
-      <button class="sg-label-add" onclick="showTaskInput()">+ Add</button>
+      <span class="task-guidance-pill" id="taskGuidancePill">4 tasks · one per round</span>
     </div>
-    <div class="sg-list" id="taskList">
-      <div class="task-empty" id="taskEmpty">Add tasks to focus on during your session.</div>
+    <p class="task-guidance-tip" id="taskGuidanceTip">One task per 25-min round. Break big work into steps. Group admin tasks — emails, replies — into one slot.</p>
+    <div class="sg-list">
+      <div class="task-add-row" onclick="document.getElementById('taskAddInput').focus()">
+        <div class="task-add-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <input class="task-add-input" id="taskAddInput" placeholder="What needs doing today? Add your first task..." maxlength="120">
+        <button class="task-add-btn" id="taskAddBtn" onclick="event.stopPropagation();submitPermanentInput()">↵</button>
+      </div>
+      <div id="taskList"></div>
     </div>
   </div>
 
@@ -838,10 +872,26 @@ let tasks = []; // [{id, name, done}]
 let nextTaskId = 1;
 let completedThisSession = []; // task names completed during current session
 
+const TASK_GUIDANCE = {
+  classic:  { pill: '4 tasks · one per round',    tip: 'One task per 25-min round. Break big work into steps. Group admin tasks — emails, replies — into one slot.' },
+  deepwork: { pill: '2-3 tasks max',              tip: 'Each 50-min session needs real depth. Pick tasks that deserve unbroken time. Skip quick admin — that goes in a Classic session.' },
+  sprint:   { pill: '6-8 quick tasks',            tip: 'Quick wins only. Group small tasks — emails, reviews, short replies — into a single slot so they don\'t fragment your rounds.' },
+  custom:   { pill: 'aim for 3-5 tasks',          tip: 'One task per session. Break big work into steps that fit your focus window. Group admin into one round.' },
+};
+
+function updateGuidance() {
+  const g = TASK_GUIDANCE[activePreset] || TASK_GUIDANCE.custom;
+  const pill = document.getElementById('taskGuidancePill');
+  const tip  = document.getElementById('taskGuidanceTip');
+  if (pill) pill.textContent = g.pill;
+  if (tip)  tip.textContent  = g.tip;
+}
+
 function loadTasks() {
   try { tasks = JSON.parse(localStorage.getItem('pom_tasks') || '[]'); } catch(e){ tasks=[]; }
   nextTaskId = tasks.length ? Math.max(...tasks.map(t=>t.id)) + 1 : 1;
   renderTasks();
+  updateGuidance();
 }
 
 function saveTasks() {
@@ -882,21 +932,16 @@ function markActiveTaskDone() {
   updateActiveTaskStrip();
 }
 
+const GHOST_HINTS = [
+  'Most important task today...',
+  'Next priority...',
+  'Group admin tasks here (emails, replies, reviews)...',
+];
+
 function renderTasks() {
   const list = document.getElementById('taskList');
-  const empty = document.getElementById('taskEmpty');
+  if (!list) return;
   const activeTodo = getActiveTask();
-
-  const inputRow = document.getElementById('taskInputRow');
-
-  // Build fresh
-  let html = '';
-  if (inputRow) {
-    // preserve input row if it exists
-  }
-
-  // Check if input row is showing
-  const showingInput = !!document.getElementById('taskInputRow');
 
   const taskHtml = tasks.map(t => {
     const isActive = !t.done && activeTodo && t.id === activeTodo.id;
@@ -906,60 +951,41 @@ function renderTasks() {
           <button class="task-check${t.done?' checked':''}${isActive?' active-ring':''}" onclick="toggleTask(${t.id})"></button>
           ${isActive ? '<div class="task-active-dot"></div>' : ''}
           <span class="task-name">${escHtml(t.name)}</span>
-          <button class="task-drag" style="background:none;border:none;padding:4px">
+          <button class="task-drag" style="background:none;border:none;padding:4px;cursor:grab">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
           </button>
         </div>
-        <button class="task-del-btn" style="position:absolute;right:0;top:0;bottom:0;width:72px;background:var(--red);border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center" onclick="event.stopPropagation();deleteTask(${t.id})">Delete</button>
+        <button class="task-del-btn" onclick="event.stopPropagation();deleteTask(${t.id})">Delete</button>
       </div>`;
   }).join('');
 
-  if (showingInput) {
-    list.innerHTML = `<div id="taskInputRow" class="task-input-row">
-      <input class="task-input" id="taskInputField" placeholder="What are you working on?" maxlength="120" autofocus>
-      <button class="task-input-submit" onclick="submitTaskInput()">+</button>
-    </div>${taskHtml}${tasks.length === 0 ? '<div class="task-empty">Add tasks to focus on.</div>' : ''}`;
-    const field = document.getElementById('taskInputField');
-    if (field) { field.focus(); field.addEventListener('keydown', e => { if(e.key==='Enter') submitTaskInput(); }); }
-  } else {
-    list.innerHTML = taskHtml + (tasks.length === 0 ? '<div class="task-empty">Add tasks to focus on during your session.</div>' : '');
-  }
+  // Show ghost items for remaining empty slots (up to 3 total)
+  const ghostCount = Math.max(0, 3 - tasks.length);
+  const ghostHtml = Array.from({length: ghostCount}, (_, i) => {
+    const hint = GHOST_HINTS[tasks.length + i] || 'Add another task...';
+    return `<div class="task-ghost" onclick="document.getElementById('taskAddInput').focus()">
+      <div class="task-ghost-check"></div>
+      <span class="task-ghost-name">${hint}</span>
+    </div>`;
+  }).join('');
+
+  list.innerHTML = taskHtml + ghostHtml;
 
   // Wire swipe-to-delete on task items
-  document.querySelectorAll('.task-item').forEach(el => initTaskSwipe(el));
+  list.querySelectorAll('.task-item').forEach(el => initTaskSwipe(el));
 }
 
-function showTaskInput() {
-  const list = document.getElementById('taskList');
-  if (document.getElementById('taskInputRow')) return; // already open
-  const emptyEl = list.querySelector('.task-empty');
-  if (emptyEl) emptyEl.remove();
-  const row = document.createElement('div');
-  row.id = 'taskInputRow';
-  row.className = 'task-input-row';
-  row.innerHTML = `<input class="task-input" id="taskInputField" placeholder="What are you working on?" maxlength="120">
-    <button class="task-input-submit" onclick="submitTaskInput()">+</button>`;
-  list.prepend(row);
-  const field = document.getElementById('taskInputField');
-  field.focus();
-  field.addEventListener('keydown', e => { if (e.key === 'Enter') submitTaskInput(); });
-  field.addEventListener('blur', () => setTimeout(() => {
-    const r = document.getElementById('taskInputRow');
-    if (r && !document.getElementById('taskInputField')?.value?.trim()) {
-      r.remove();
-      renderTasks();
-    }
-  }, 200));
-}
-
-function submitTaskInput() {
-  const field = document.getElementById('taskInputField');
+function submitPermanentInput() {
+  const field = document.getElementById('taskAddInput');
   if (!field) return;
   const val = field.value.trim();
-  const row = document.getElementById('taskInputRow');
-  if (row) row.remove();
-  if (val) addTask(val);
-  else renderTasks();
+  if (val) {
+    addTask(val);
+    field.value = '';
+    document.getElementById('taskAddBtn').classList.remove('show');
+    field.placeholder = 'Add another task...';
+  }
+  field.focus();
 }
 
 function initTaskSwipe(itemEl) {
@@ -1353,7 +1379,7 @@ function applyPreset(name) {
   const p=PRESETS[name]; if(!p) return;
   cfg={...cfg,...p};
   activePreset=name;
-  saveCfg(); renderCfg();
+  saveCfg(); renderCfg(); updateGuidance();
   document.querySelectorAll('.preset-btn').forEach(b=>
     b.classList.toggle('active',b.dataset.p===name));
 }
@@ -1716,6 +1742,30 @@ document.addEventListener('visibilitychange', ()=>{
 ════════════════════════════════════════════ */
 loadCfg();
 loadTasks();
+
+// Wire the permanent task input
+(function() {
+  const input = document.getElementById('taskAddInput');
+  const btn   = document.getElementById('taskAddBtn');
+  if (!input || !btn) return;
+
+  input.addEventListener('input', () => {
+    const hasText = input.value.trim().length > 0;
+    btn.classList.toggle('show', hasText);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitPermanentInput();
+    }
+    if (e.key === 'Escape') {
+      input.value = '';
+      btn.classList.remove('show');
+      input.blur();
+    }
+  });
+})();
 </script>
 </body>
 </html>
