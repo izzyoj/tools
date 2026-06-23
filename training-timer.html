@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>KB Timer</title>
+<title>Double KB Timer</title>
 <style>
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
@@ -85,6 +85,10 @@ html, body {
   display: flex; align-items: center; justify-content: space-between;
 }
 .cfg-title { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; }
+.cfg-sub {
+  font-size: 12px; color: var(--text3); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; margin-top: 3px; padding-left: 2px;
+}
 .icon-btn {
   width: 36px; height: 36px; background: var(--surface2);
   border: none; border-radius: 10px; cursor: pointer;
@@ -114,14 +118,16 @@ html, body {
   flex: 1; padding: 10px 6px;
   background: var(--surface); border: 1.5px solid var(--border);
   border-radius: 12px; cursor: pointer;
-  color: var(--text2); font-size: 12px; font-weight: 700;
-  letter-spacing: 0.01em; text-align: center;
+  color: var(--text2); text-align: center;
   transition: all 0.15s;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
 }
 .preset-btn:active, .preset-btn.active {
   border-color: var(--orange); color: var(--orange);
   background: rgba(255,159,10,0.08);
 }
+.preset-name { font-size: 12px; font-weight: 700; letter-spacing: 0.01em; }
+.preset-sub  { font-size: 10px; font-weight: 500; opacity: 0.6; letter-spacing: 0.01em; }
 
 /* Settings group */
 .sg { margin: 0 20px 14px; }
@@ -457,7 +463,10 @@ html, body {
 <div class="screen active" id="cfg">
 
   <div class="cfg-header">
-    <h1 class="cfg-title">KB Timer</h1>
+    <div>
+      <h1 class="cfg-title">Double KB Timer</h1>
+      <p class="cfg-sub">System, not willpower.</p>
+    </div>
     <button class="icon-btn" id="audioBtn" title="Audio mode">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -476,9 +485,18 @@ html, body {
 
   <!-- Presets -->
   <div class="presets">
-    <button class="preset-btn" data-p="kbquick">KB Quick</button>
-    <button class="preset-btn" data-p="kbxround">KBX Round</button>
-    <button class="preset-btn" data-p="tabata">Tabata</button>
+    <button class="preset-btn" data-p="kbquick">
+      <span class="preset-name">KB Quick</span>
+      <span class="preset-sub">Kettlebell</span>
+    </button>
+    <button class="preset-btn" data-p="kbxround">
+      <span class="preset-name">KBX Round</span>
+      <span class="preset-sub">Kickboxing</span>
+    </button>
+    <button class="preset-btn" data-p="tabata">
+      <span class="preset-name">HIIT</span>
+      <span class="preset-sub">High Intensity</span>
+    </button>
   </div>
 
   <!-- Exercise settings -->
@@ -1043,7 +1061,7 @@ function cycleAudio() {
 }
 
 /* Presets */
-const PRESET_LBLS = {kbquick:'KB Quick', kbxround:'KBX Round', tabata:'Tabata'};
+const PRESET_LBLS = {kbquick:'KB Quick', kbxround:'KBX Round', tabata:'HIIT'};
 
 function applyPreset(name) {
   const p = PRESETS[name];
@@ -1249,7 +1267,7 @@ function generateShareCard(s) {
   const ACCENT = {
     'KBX Round': '#5ac8fa',
     'KB Quick':  '#ff9f0a',
-    'Tabata':    '#ff453a',
+    'HIIT':      '#ff453a',
   }[s.label] || '#ff9f0a';
 
   // Background
