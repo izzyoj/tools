@@ -678,6 +678,7 @@ const PRESETS = {
 };
 
 let cfg = {...D};
+let activeLabel = 'Custom'; // tracks preset name or 'Custom' for manual settings
 
 /* ════════════════════════════════════════════
    AUDIO ENGINE
@@ -783,7 +784,9 @@ function buildSeq() {
 }
 
 function startSession() {
-  getActx(); // unlock on user gesture
+  // Fresh AudioContext each session — avoids suspended/closed state from previous run
+  if (actx) { try { actx.close(); } catch(e){} actx = null; }
+  getActx(); // create new context from this user gesture
   seq = buildSeq();
   seqIdx = 0; setsOk = 0; cyclesOk = 0;
   sessStart = Date.now(); sessElapsed = 0;
@@ -829,7 +832,7 @@ function endSession() {
   playPhase('finish');
 
   const totalSecs = Math.round((Date.now() - sessStart) / 1000);
-  saveHistory({date:new Date().toISOString(), secs:totalSecs, sets:setsOk, cycles:cyclesOk});
+  saveHistory({date:new Date().toISOString(), secs:totalSecs, sets:setsOk, cycles:cyclesOk, label:activeLabel});
 
   document.getElementById('dTime').textContent = fmtDur(totalSecs);
   document.getElementById('dSets').textContent = setsOk;
@@ -899,7 +902,7 @@ function exitTimer() {
     // Save whatever was done — even a partial session is worth keeping
     const totalSecs = Math.round((Date.now() - sessStart) / 1000);
     if (totalSecs > 5) {
-      saveHistory({date:new Date().toISOString(), secs:totalSecs, sets:setsOk, cycles:cyclesOk, partial:true});
+      saveHistory({date:new Date().toISOString(), secs:totalSecs, sets:setsOk, cycles:cyclesOk, label:activeLabel, partial:true});
     }
   }
   state = 'idle';
@@ -1013,10 +1016,13 @@ function cycleAudio() {
 }
 
 /* Presets */
+const PRESET_LBLS = {kbquick:'KB Quick', kbxround:'KBX Round', tabata:'Tabata'};
+
 function applyPreset(name) {
   const p = PRESETS[name];
   if (!p) return;
   cfg = {...cfg, ...p};
+  activeLabel = PRESET_LBLS[name] || name;
   saveCfg(); renderCfg();
   document.querySelectorAll('.preset-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.p === name));
@@ -1091,6 +1097,7 @@ function confirmSheet() {
   if (!sKey) return;
   if (TIME_KEYS.includes(sKey)) cfg[sKey] = sMins*60 + sSecs;
   else cfg[sKey] = sCount;
+  activeLabel = 'Custom'; // manual edit clears preset label
   saveCfg(); renderCfg(); closeSheet();
   // clear active preset
   document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
@@ -1152,7 +1159,7 @@ function renderHistory() {
         <div class="hist-dot" ${s.partial ? 'style="background:var(--text3)"' : ''}></div>
         <div class="hist-info">
           <div class="hist-date">${day}${s.partial ? ' <span style="font-size:11px;color:var(--text3);font-weight:500">partial</span>' : ''}</div>
-          <div class="hist-meta">${tm} · ${s.sets} sets · ${s.cycles} cycle${s.cycles!==1?'s':''}</div>
+          <div class="hist-meta">${tm} · ${s.label || 'Session'} · ${s.sets} sets · ${s.cycles} cycle${s.cycles!==1?'s':''}</div>
         </div>
         <div class="hist-dur">${fmtDur(s.secs)}</div>
       </div>`;
