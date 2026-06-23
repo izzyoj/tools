@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Pomodoro Focus Timer</title>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #1c1c1e;
+  --surface2: #2c2c2e;
+  --border: rgba(255,255,255,0.07);
+  --text: #f5f5f7;
+  --text2: #aeaeb2;
+  --text3: #48484a;
+  --orange: #ff9f0a;
+  --blue: #0a84ff;
+  --teal: #5ac8fa;
+  --green: #30d158;
+  --red: #ff453a;
+  --purple: #bf5af2;
+  --nav-h: 68px;
+  --safe: env(safe-area-inset-bottom, 16px);
+}
+
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App Shell */
+.app {
+  height: 100vh; height: 100dvh;
+  display: flex; flex-direction: column;
+  overflow: hidden; position: relative;
+  max-width: 430px; margin: 0 auto;
+}
+
+/* Screens */
+.screen {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding-bottom: calc(var(--nav-h) + var(--safe));
+  display: none; flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+}
+.screen.active { display: flex; }
+#timer-screen { overflow: hidden; padding-bottom: 0; }
+
+/* Nav */
+.nav {
+  position: fixed; bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%; max-width: 430px;
+  height: calc(var(--nav-h) + var(--safe));
+  padding-bottom: var(--safe);
+  background: rgba(18,18,20,0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border);
+  display: flex; z-index: 100;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.nav.hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(100%); }
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text3); padding: 8px 0;
+  transition: color 0.15s;
+}
+.nav-btn.active { color: var(--orange); }
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn span { font-size: 10px; font-weight: 600; letter-spacing: 0.03em; }
+
+/* ═══════════════════════════════════════════
+   SETUP SCREEN
+═══════════════════════════════════════════ */
+.cfg-header {
+  padding: 20px 20px 4px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.cfg-title { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; }
+.cfg-sub {
+  font-size: 12px; color: var(--orange); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; margin-top: 3px; padding-left: 2px;
+}
+.icon-btn {
+  width: 36px; height: 36px; background: var(--surface2);
+  border: none; border-radius: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2); transition: background 0.1s;
+}
+.icon-btn:active { background: var(--text3); }
+.icon-btn svg { width: 18px; height: 18px; }
+
+/* Audio badge */
+.audio-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin: 6px 20px 8px;
+  background: var(--surface2); border: none;
+  padding: 5px 12px; border-radius: 20px;
+  cursor: pointer; color: var(--text2);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+}
+.audio-pill svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+/* Presets */
+.presets {
+  padding: 4px 20px 12px;
+  display: flex; gap: 8px;
+}
+.preset-btn {
+  flex: 1; padding: 10px 6px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 12px; cursor: pointer;
+  color: var(--text2); text-align: center;
+  transition: all 0.15s;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.preset-btn:active, .preset-btn.active {
+  border-color: var(--orange); color: var(--orange);
+  background: rgba(255,159,10,0.08);
+}
+.preset-name { font-size: 12px; font-weight: 700; letter-spacing: 0.01em; }
+.preset-sub  { font-size: 10px; font-weight: 500; opacity: 0.6; letter-spacing: 0.01em; }
+
+/* Task list section */
+.sg { margin: 0 20px 14px; }
+.sg-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text3);
+  margin-bottom: 7px; padding-left: 4px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sg-label-add {
+  font-size: 11px; font-weight: 700; color: var(--orange);
+  background: none; border: none; cursor: pointer;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.sg-list { background: var(--surface); border-radius: 14px; overflow: hidden; }
+
+/* Task input row */
+.task-input-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.task-input {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--text); font-size: 15px; font-weight: 500;
+  font-family: inherit;
+}
+.task-input::placeholder { color: var(--text3); }
+.task-input-submit {
+  background: none; border: none; cursor: pointer;
+  color: var(--orange); font-size: 22px; line-height: 1;
+  padding: 0 2px; display: flex; align-items: center;
+}
+
+/* Task item */
+.task-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; border-bottom: 1px solid var(--border);
+  position: relative; overflow: hidden;
+  transition: background 0.1s;
+}
+.task-item:last-child { border-bottom: none; }
+.task-item.done .task-name { text-decoration: line-through; color: var(--text3); }
+.task-item.active-task { background: rgba(255,159,10,0.05); }
+
+.task-check {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--text3); flex-shrink: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; background: none;
+}
+.task-check.checked { background: var(--green); border-color: var(--green); }
+.task-check.checked::after {
+  content: ''; width: 5px; height: 9px;
+  border: 2px solid #000; border-top: none; border-left: none;
+  transform: rotate(45deg) translate(-1px, -1px);
+  display: block;
+}
+.task-check.active-ring { border-color: var(--orange); }
+
+.task-name { flex: 1; font-size: 15px; font-weight: 500; color: var(--text); word-break: break-word; }
+.task-active-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--orange); flex-shrink: 0;
+}
+
+.task-drag {
+  color: var(--text3); cursor: grab; flex-shrink: 0;
+  display: flex; align-items: center;
+}
+.task-drag:active { cursor: grabbing; }
+
+/* Task swipe-to-delete */
+.task-swipe-wrap { display: flex; align-items: center; width: 100%; position: relative; z-index: 1; }
+.task-del-btn {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 72px;
+  background: var(--red); border: none; color: #fff;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.01em;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+/* Empty state */
+.task-empty {
+  padding: 22px 16px; text-align: center;
+  color: var(--text3); font-size: 14px; line-height: 1.6;
+}
+
+/* Settings group */
+.sr {
+  display: flex; align-items: center;
+  padding: 13px 16px; gap: 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background 0.1s; min-height: 52px;
+}
+.sr:last-child { border-bottom: none; }
+.sr:active { background: var(--surface2); }
+.sr-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sr-icon svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sr-name { flex: 1; font-size: 15px; font-weight: 500; }
+.sr-val { font-size: 15px; color: var(--text2); }
+.sr-chev { color: var(--text3); flex-shrink: 0; }
+
+/* Start */
+.start-btn {
+  margin: 0 20px 8px; padding: 18px;
+  background: var(--orange); border: none; border-radius: 16px;
+  font-size: 17px; font-weight: 700; color: #000;
+  cursor: pointer; letter-spacing: 0.01em; width: calc(100% - 40px);
+  transition: opacity 0.15s, transform 0.1s;
+}
+.start-btn:active { opacity: 0.82; transform: scale(0.99); }
+
+/* ═══════════════════════════════════════════
+   TIMER SCREEN
+═══════════════════════════════════════════ */
+#timer-screen {
+  background: var(--bg);
+  transition: background 0.5s ease;
+  display: none; flex-direction: column;
+}
+#timer-screen.active { display: flex; }
+
+.t-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px 8px; flex-shrink: 0;
+}
+.t-pos {
+  font-size: 13px; color: var(--text2); font-weight: 500;
+  letter-spacing: 0.02em; text-align: center; flex: 1;
+}
+
+/* Phase label */
+.phase-lbl {
+  text-align: center; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--text2); padding: 0 20px 4px;
+  flex-shrink: 0; transition: color 0.4s;
+}
+
+/* Round dots */
+.round-dots {
+  display: flex; justify-content: center; gap: 10px;
+  padding: 0 20px 8px; flex-shrink: 0;
+}
+.rdot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--text3); transition: all 0.3s;
+  position: relative;
+}
+.rdot.done { background: var(--orange); }
+.rdot.current {
+  background: var(--orange);
+  box-shadow: 0 0 0 3px rgba(255,159,10,0.25);
+}
+
+/* Active task strip */
+.active-task-strip {
+  margin: 0 20px 6px; padding: 8px 14px;
+  background: rgba(255,159,10,0.06);
+  border: 1px solid rgba(255,159,10,0.15);
+  border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px;
+  min-height: 38px;
+}
+.active-task-strip svg { width: 13px; height: 13px; color: var(--orange); flex-shrink: 0; }
+.active-task-name {
+  font-size: 13px; color: var(--text2); font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.active-task-done-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--orange); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  flex-shrink: 0; padding: 2px 0;
+}
+
+/* Ring */
+.ring-area {
+  flex: 1; display: flex; align-items: center;
+  justify-content: center; position: relative;
+  min-height: 0; cursor: pointer;
+}
+.ring-wrap {
+  position: relative; display: flex;
+  align-items: center; justify-content: center;
+}
+.ring-svg {
+  width: clamp(200px, 58vw, 270px);
+  height: clamp(200px, 58vw, 270px);
+}
+.r-bg { fill: none; stroke: var(--surface2); stroke-width: 14; }
+.r-prog {
+  fill: none; stroke: var(--orange); stroke-width: 14;
+  stroke-linecap: round;
+  stroke-dasharray: 678.58; stroke-dashoffset: 0;
+  transform: rotate(-90deg); transform-origin: 50% 50%;
+  transition: stroke-dashoffset 0.15s linear, stroke 0.4s ease;
+}
+.ring-inner {
+  position: absolute; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px; pointer-events: none; text-align: center;
+}
+.ring-time {
+  font-size: clamp(48px, 14vw, 72px);
+  font-weight: 700; letter-spacing: -0.04em;
+  line-height: 1; transition: color 0.3s, opacity 0.3s;
+}
+.ring-sub {
+  font-size: 13px; color: var(--text3);
+  font-weight: 400; letter-spacing: 0.03em;
+}
+.ring-paused {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--text3);
+  margin-top: 2px; opacity: 0; transition: opacity 0.2s;
+}
+.is-paused .ring-paused { opacity: 1; }
+.is-paused .ring-time { opacity: 0.3; }
+
+/* Controls */
+.t-controls {
+  padding: 0 40px 12px;
+  display: flex; gap: 16px;
+  justify-content: center; align-items: center; flex-shrink: 0;
+}
+.ctrl {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--surface); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2); transition: transform 0.1s, background 0.1s;
+}
+.ctrl:active { transform: scale(0.91); background: var(--surface2); }
+.ctrl svg { width: 18px; height: 18px; }
+.ctrl-main {
+  width: 64px; height: 64px;
+  background: var(--orange); color: #000;
+}
+.ctrl-main svg { width: 22px; height: 22px; }
+.ctrl-skip-break {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--text3); text-transform: uppercase;
+  width: 48px; height: 48px;
+}
+
+/* Done overlay */
+.done-overlay {
+  position: absolute; inset: 0;
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: var(--bg); z-index: 20; padding: 32px 32px;
+  text-align: center; overflow-y: auto;
+}
+.done-overlay.show { display: flex; }
+.done-emoji { font-size: 52px; margin-bottom: 8px; }
+.done-title { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.done-sub { font-size: 14px; color: var(--text2); margin-top: 3px; }
+.done-stats {
+  display: flex; gap: 28px; margin: 20px 0 14px;
+}
+.ds-val { font-size: 26px; font-weight: 700; }
+.ds-lbl { font-size: 11px; color: var(--text2); margin-top: 3px; letter-spacing: 0.02em; }
+
+/* Done tasks list */
+.done-tasks {
+  width: 100%; margin-bottom: 16px; max-height: 120px; overflow-y: auto;
+  background: var(--surface); border-radius: 12px; padding: 4px 0;
+  text-align: left;
+}
+.done-task-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; font-size: 13px; color: var(--text2);
+}
+.done-task-row svg { width: 13px; height: 13px; color: var(--green); flex-shrink: 0; }
+
+.done-actions { display: flex; gap: 12px; width: 100%; }
+.done-btn {
+  flex: 1; padding: 15px; border-radius: 14px;
+  border: none; cursor: pointer; font-size: 15px; font-weight: 600;
+  transition: opacity 0.15s;
+}
+.done-btn:active { opacity: 0.72; }
+.done-primary { background: var(--orange); color: #000; }
+.done-secondary { background: var(--surface); color: var(--text); }
+
+/* ═══════════════════════════════════════════
+   HISTORY SCREEN
+═══════════════════════════════════════════ */
+.hist-header {
+  padding: 20px 20px 10px;
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.hist-title { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; }
+.hist-count { font-size: 13px; color: var(--text3); font-weight: 500; }
+
+.hist-empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; color: var(--text3); padding: 40px 20px; text-align: center;
+}
+.hist-empty svg { width: 44px; height: 44px; opacity: 0.35; }
+.hist-empty p { font-size: 15px; line-height: 1.55; }
+
+.hist-list { padding: 4px 20px; }
+.wk-lbl {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text3);
+  margin: 14px 0 6px; padding-left: 4px;
+}
+.wk-group { background: var(--surface); border-radius: 14px; overflow: hidden; margin-bottom: 4px; }
+
+.hist-item { position: relative; overflow: hidden; }
+.hist-swipe-wrap { position: relative; z-index: 1; background: var(--surface); }
+.hist-del-btn {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 80px;
+  background: var(--red); border: none;
+  color: #fff; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.01em; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.hist-row {
+  display: flex; align-items: center;
+  padding: 13px 16px; gap: 14px;
+  border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.hist-row:last-child { border-bottom: none; }
+.hist-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--orange); flex-shrink: 0;
+}
+.hist-info { flex: 1; }
+.hist-date { font-size: 15px; font-weight: 500; }
+.hist-meta { font-size: 13px; color: var(--text2); margin-top: 2px; }
+.hist-dur { font-size: 15px; font-weight: 600; }
+.hist-chev {
+  flex-shrink: 0; margin-left: 4px;
+  transition: transform 0.2s;
+}
+.hist-item.open .hist-chev { transform: rotate(90deg); }
+.hist-expand {
+  display: none; padding: 0 16px 14px;
+}
+.hist-item.open .hist-expand { display: block; }
+.hist-tasks-done {
+  margin-top: 6px; padding: 10px 14px;
+  background: var(--surface2); border-radius: 10px;
+}
+.hist-task-done {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text2); padding: 4px 0;
+}
+.hist-task-done svg { width: 13px; height: 13px; color: var(--green); flex-shrink: 0; }
+.hist-share-btn {
+  width: 100%; padding: 12px; margin-top: 10px;
+  background: var(--orange); border: none; border-radius: 12px;
+  font-size: 14px; font-weight: 700; color: #000;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: opacity 0.15s;
+}
+.hist-share-btn:active { opacity: 0.8; }
+
+/* ═══════════════════════════════════════════
+   BOTTOM SHEET
+═══════════════════════════════════════════ */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  z-index: 200; opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+.sheet {
+  position: fixed; bottom: 0; left: 50%; z-index: 201;
+  width: 100%; max-width: 430px;
+  background: #1c1c1e; border-radius: 20px 20px 0 0;
+  transform: translateX(-50%) translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  padding-bottom: calc(20px + var(--safe));
+}
+.sheet.open { transform: translateX(-50%) translateY(0); }
+.sheet-handle {
+  width: 36px; height: 4px; background: var(--text3);
+  border-radius: 2px; margin: 12px auto 0; opacity: 0.5;
+}
+.sheet-title {
+  font-size: 17px; font-weight: 600; text-align: center;
+  padding: 14px 20px 10px; border-bottom: 1px solid var(--border);
+}
+.sheet-body { padding: 24px 24px 8px; }
+
+/* Time editor */
+.te {
+  display: flex; align-items: center;
+  justify-content: center; gap: 8px; margin-bottom: 24px;
+}
+.te-unit { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.te-lbl {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text3);
+}
+.te-col {
+  font-size: 52px; font-weight: 300; color: var(--text3);
+  line-height: 1; padding-top: 16px;
+}
+.te-display {
+  font-size: 52px; font-weight: 700; letter-spacing: -0.03em;
+  min-width: 78px; text-align: center; line-height: 1;
+}
+.te-btns { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.te-btn {
+  width: 48px; height: 34px; background: var(--surface2);
+  border: none; border-radius: 8px; cursor: pointer;
+  color: var(--text); font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.1s; font-weight: 300;
+}
+.te-btn:active { background: var(--text3); }
+
+/* Count editor */
+.ce {
+  display: flex; align-items: center;
+  justify-content: center; gap: 28px; margin-bottom: 24px;
+}
+.ce-btn {
+  width: 56px; height: 56px; background: var(--surface2);
+  border: none; border-radius: 50%; cursor: pointer;
+  font-size: 26px; color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.1s; font-weight: 300;
+}
+.ce-btn:active { background: var(--text3); }
+.ce-display {
+  font-size: 68px; font-weight: 700;
+  letter-spacing: -0.04em; min-width: 84px; text-align: center;
+}
+.sheet-done {
+  width: 100%; padding: 16px; background: var(--orange);
+  border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 700; color: #000;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.sheet-done:active { opacity: 0.8; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════════════════════════════════════════
+     SETUP SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen active" id="cfg">
+
+  <div class="cfg-header">
+    <div>
+      <h1 class="cfg-title">Focus Timer</h1>
+      <p class="cfg-sub">System, not willpower.</p>
+    </div>
+    <button class="icon-btn" id="audioBtn" title="Audio mode">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+    </button>
+  </div>
+
+  <button class="audio-pill" id="audioPill">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" id="audioPillIcon">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
+    </svg>
+    <span id="audioPillText">Sound effects</span>
+  </button>
+
+  <!-- Presets -->
+  <div class="presets">
+    <button class="preset-btn active" data-p="classic">
+      <span class="preset-name">Classic</span>
+      <span class="preset-sub">25 / 5 / 15</span>
+    </button>
+    <button class="preset-btn" data-p="deepwork">
+      <span class="preset-name">Deep Work</span>
+      <span class="preset-sub">50 / 10 / 20</span>
+    </button>
+    <button class="preset-btn" data-p="sprint">
+      <span class="preset-name">Sprint</span>
+      <span class="preset-sub">15 / 3 / 10</span>
+    </button>
+  </div>
+
+  <!-- Task list -->
+  <div class="sg">
+    <div class="sg-label">
+      <span>Tasks</span>
+      <button class="sg-label-add" onclick="showTaskInput()">+ Add</button>
+    </div>
+    <div class="sg-list" id="taskList">
+      <div class="task-empty" id="taskEmpty">Add tasks to focus on during your session.</div>
+    </div>
+  </div>
+
+  <!-- Session config -->
+  <div class="sg">
+    <div class="sg-label">Session</div>
+    <div class="sg-list">
+      <div class="sr" data-k="work">
+        <div class="sr-icon" style="background:#4a2800">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <span class="sr-name">Focus</span>
+        <span class="sr-val" id="v-work">25:00</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="sr" data-k="shortBreak">
+        <div class="sr-icon" style="background:#00204a">
+          <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </div>
+        <span class="sr-name">Short Break</span>
+        <span class="sr-val" id="v-shortBreak">5:00</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="sr" data-k="longBreak">
+        <div class="sr-icon" style="background:#0a2e14">
+          <svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        </div>
+        <span class="sr-name">Long Break</span>
+        <span class="sr-val" id="v-longBreak">15:00</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="sr" data-k="rounds">
+        <div class="sr-icon" style="background:#1c1040">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </div>
+        <span class="sr-name">Rounds before long break</span>
+        <span class="sr-val" id="v-rounds">4</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="sr" data-k="countdown">
+        <div class="sr-icon" style="background:#3a3a3c">
+          <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="white" stroke="none"/></svg>
+        </div>
+        <span class="sr-name">Countdown</span>
+        <span class="sr-val" id="v-countdown">5 sec</span>
+        <svg class="sr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start -->
+  <button class="start-btn" id="startBtn">Start Session</button>
+
+</div><!-- /cfg -->
+
+
+<!-- ═══════════════════════════════════════════
+     TIMER SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen" id="timer">
+
+  <div class="t-header">
+    <button class="icon-btn" id="exitBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="t-pos" id="tPos">Round 1 of 4</div>
+    <button class="icon-btn" id="muteBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" id="muteIco">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="phase-lbl" id="phaseLbl">Get Ready</div>
+  <div class="round-dots" id="roundDots"></div>
+
+  <div class="active-task-strip" id="activeTaskStrip">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <polyline points="9 11 12 14 22 4"/>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+    </svg>
+    <span class="active-task-name" id="activeTaskName">No tasks added</span>
+    <button class="active-task-done-btn" id="taskDoneBtn" onclick="markActiveTaskDone()" style="display:none">Done</button>
+  </div>
+
+  <div class="ring-area" id="ringArea" onclick="togglePause()">
+    <div class="ring-wrap">
+      <svg class="ring-svg" viewBox="0 0 240 240">
+        <circle class="r-bg" cx="120" cy="120" r="108"/>
+        <circle class="r-prog" cx="120" cy="120" r="108" id="rProg"/>
+      </svg>
+      <div class="ring-inner">
+        <div class="ring-time" id="rTime">00:00</div>
+        <div class="ring-sub" id="rSub">tap to pause</div>
+        <div class="ring-paused">PAUSED</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="t-controls">
+    <button class="ctrl ctrl-skip-break" id="skipBreakBtn" onclick="skipBreak()" title="Skip break">
+      Skip<br>Break
+    </button>
+    <button class="ctrl ctrl-main" id="pauseBtn" onclick="togglePause()">
+      <svg viewBox="0 0 24 24" fill="currentColor" id="pauseIco">
+        <rect x="6" y="4" width="4" height="16" rx="1"/>
+        <rect x="14" y="4" width="4" height="16" rx="1"/>
+      </svg>
+    </button>
+    <button class="ctrl" id="stopBtn" title="End session">
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+    </button>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="doneOvl">
+    <div class="done-emoji">🍅</div>
+    <div class="done-title">Session complete</div>
+    <div class="done-sub" id="doneSub">Deep work done.</div>
+    <div class="done-stats">
+      <div>
+        <div class="ds-val" id="dTime">--</div>
+        <div class="ds-lbl">Total time</div>
+      </div>
+      <div>
+        <div class="ds-val" id="dRounds">--</div>
+        <div class="ds-lbl">Rounds</div>
+      </div>
+      <div>
+        <div class="ds-val" id="dTasks">--</div>
+        <div class="ds-lbl">Tasks done</div>
+      </div>
+    </div>
+    <div class="done-tasks" id="doneTasks"></div>
+    <div class="done-actions">
+      <button class="done-btn done-secondary" onclick="exitTimer()">Back</button>
+      <button class="done-btn done-primary" onclick="restartTimer()">Go again</button>
+    </div>
+  </div>
+
+</div><!-- /timer -->
+
+
+<!-- ═══════════════════════════════════════════
+     HISTORY SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen" id="history">
+  <div class="hist-header">
+    <h1 class="hist-title">History</h1>
+    <span class="hist-count" id="histCount"></span>
+  </div>
+  <div id="histContent"></div>
+</div>
+
+
+<!-- Nav -->
+<nav class="nav" id="nav">
+  <button class="nav-btn active" data-sc="cfg" onclick="goScreen('cfg',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+    <span>Focus</span>
+  </button>
+  <button class="nav-btn" data-sc="history" onclick="goScreen('history',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    <span>History</span>
+  </button>
+</nav>
+
+</div><!-- /app -->
+
+<!-- Sheet -->
+<div class="overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="sheetTitle">Setting</div>
+  <div class="sheet-body" id="sheetBody"></div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════
+   DEFAULTS & PRESETS
+════════════════════════════════════════════ */
+const D = {
+  work: 25*60, shortBreak: 5*60, longBreak: 15*60,
+  rounds: 4, countdown: 5, audio: 'sounds'
+};
+
+const PRESETS = {
+  classic:  {work:25*60, shortBreak:5*60,  longBreak:15*60, rounds:4},
+  deepwork: {work:50*60, shortBreak:10*60, longBreak:20*60, rounds:4},
+  sprint:   {work:15*60, shortBreak:3*60,  longBreak:10*60, rounds:4},
+};
+const PRESET_LBLS = {classic:'Classic', deepwork:'Deep Work', sprint:'Sprint'};
+
+let cfg = {...D};
+let activePreset = 'classic';
+
+/* ════════════════════════════════════════════
+   TASK STATE
+════════════════════════════════════════════ */
+let tasks = []; // [{id, name, done}]
+let nextTaskId = 1;
+let completedThisSession = []; // task names completed during current session
+
+function loadTasks() {
+  try { tasks = JSON.parse(localStorage.getItem('pom_tasks') || '[]'); } catch(e){ tasks=[]; }
+  nextTaskId = tasks.length ? Math.max(...tasks.map(t=>t.id)) + 1 : 1;
+  renderTasks();
+}
+
+function saveTasks() {
+  localStorage.setItem('pom_tasks', JSON.stringify(tasks));
+}
+
+function addTask(name) {
+  name = name.trim();
+  if (!name) return;
+  tasks.push({id: nextTaskId++, name, done: false});
+  saveTasks();
+  renderTasks();
+}
+
+function toggleTask(id) {
+  const t = tasks.find(t=>t.id===id);
+  if (t) { t.done = !t.done; saveTasks(); renderTasks(); updateActiveTaskStrip(); }
+}
+
+function deleteTask(id) {
+  tasks = tasks.filter(t=>t.id!==id);
+  saveTasks();
+  renderTasks();
+  updateActiveTaskStrip();
+}
+
+function getActiveTask() {
+  return tasks.find(t => !t.done) || null;
+}
+
+function markActiveTaskDone() {
+  const t = getActiveTask();
+  if (!t) return;
+  t.done = true;
+  completedThisSession.push(t.name);
+  saveTasks();
+  renderTasks();
+  updateActiveTaskStrip();
+}
+
+function renderTasks() {
+  const list = document.getElementById('taskList');
+  const empty = document.getElementById('taskEmpty');
+  const activeTodo = getActiveTask();
+
+  const inputRow = document.getElementById('taskInputRow');
+
+  // Build fresh
+  let html = '';
+  if (inputRow) {
+    // preserve input row if it exists
+  }
+
+  // Check if input row is showing
+  const showingInput = !!document.getElementById('taskInputRow');
+
+  const taskHtml = tasks.map(t => {
+    const isActive = !t.done && activeTodo && t.id === activeTodo.id;
+    return `
+      <div class="task-item${t.done?' done':''}${isActive?' active-task':''}" data-id="${t.id}">
+        <div class="task-swipe-wrap" style="display:flex;align-items:center;gap:12px;width:100%;position:relative;z-index:1;background:var(--surface);padding:0">
+          <button class="task-check${t.done?' checked':''}${isActive?' active-ring':''}" onclick="toggleTask(${t.id})"></button>
+          ${isActive ? '<div class="task-active-dot"></div>' : ''}
+          <span class="task-name">${escHtml(t.name)}</span>
+          <button class="task-drag" style="background:none;border:none;padding:4px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+          </button>
+        </div>
+        <button class="task-del-btn" style="position:absolute;right:0;top:0;bottom:0;width:72px;background:var(--red);border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center" onclick="event.stopPropagation();deleteTask(${t.id})">Delete</button>
+      </div>`;
+  }).join('');
+
+  if (showingInput) {
+    list.innerHTML = `<div id="taskInputRow" class="task-input-row">
+      <input class="task-input" id="taskInputField" placeholder="What are you working on?" maxlength="120" autofocus>
+      <button class="task-input-submit" onclick="submitTaskInput()">+</button>
+    </div>${taskHtml}${tasks.length === 0 ? '<div class="task-empty">Add tasks to focus on.</div>' : ''}`;
+    const field = document.getElementById('taskInputField');
+    if (field) { field.focus(); field.addEventListener('keydown', e => { if(e.key==='Enter') submitTaskInput(); }); }
+  } else {
+    list.innerHTML = taskHtml + (tasks.length === 0 ? '<div class="task-empty">Add tasks to focus on during your session.</div>' : '');
+  }
+
+  // Wire swipe-to-delete on task items
+  document.querySelectorAll('.task-item').forEach(el => initTaskSwipe(el));
+}
+
+function showTaskInput() {
+  const list = document.getElementById('taskList');
+  if (document.getElementById('taskInputRow')) return; // already open
+  const emptyEl = list.querySelector('.task-empty');
+  if (emptyEl) emptyEl.remove();
+  const row = document.createElement('div');
+  row.id = 'taskInputRow';
+  row.className = 'task-input-row';
+  row.innerHTML = `<input class="task-input" id="taskInputField" placeholder="What are you working on?" maxlength="120">
+    <button class="task-input-submit" onclick="submitTaskInput()">+</button>`;
+  list.prepend(row);
+  const field = document.getElementById('taskInputField');
+  field.focus();
+  field.addEventListener('keydown', e => { if (e.key === 'Enter') submitTaskInput(); });
+  field.addEventListener('blur', () => setTimeout(() => {
+    const r = document.getElementById('taskInputRow');
+    if (r && !document.getElementById('taskInputField')?.value?.trim()) {
+      r.remove();
+      renderTasks();
+    }
+  }, 200));
+}
+
+function submitTaskInput() {
+  const field = document.getElementById('taskInputField');
+  if (!field) return;
+  const val = field.value.trim();
+  const row = document.getElementById('taskInputRow');
+  if (row) row.remove();
+  if (val) addTask(val);
+  else renderTasks();
+}
+
+function initTaskSwipe(itemEl) {
+  const wrap = itemEl.querySelector('.task-swipe-wrap');
+  if (!wrap) return;
+  wrap._swipeTx = 0;
+  let startX=0, startY=0, lockAxis=null, active=false;
+  wrap.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    active=true; lockAxis=null; wrap.style.transition='none';
+    document.querySelectorAll('.task-swipe-wrap').forEach(w=>{
+      if(w!==wrap&&w._swipeTx!==0){w._swipeTx=0;w.style.transition='transform 0.22s ease';w.style.transform='translateX(0)';}
+    });
+  },{passive:true});
+  wrap.addEventListener('touchmove', e=>{
+    if(!active)return;
+    const dx=e.touches[0].clientX-startX, dy=e.touches[0].clientY-startY;
+    if(!lockAxis){if(Math.abs(dx)>5||Math.abs(dy)>5)lockAxis=Math.abs(dx)>=Math.abs(dy)?'h':'v';}
+    if(lockAxis!=='h')return;
+    wrap.style.transform=`translateX(${Math.max(-72,Math.min(0,wrap._swipeTx+dx))}px)`;
+  },{passive:true});
+  wrap.addEventListener('touchend', e=>{
+    if(!active||lockAxis!=='h'){active=false;return;}
+    active=false;
+    const dx=e.changedTouches[0].clientX-startX;
+    wrap.style.transition='transform 0.22s ease';
+    wrap._swipeTx=wrap._swipeTx===0?(dx<-36?-72:0):(dx>20?0:-72);
+    wrap.style.transform=`translateX(${wrap._swipeTx}px)`;
+  });
+}
+
+function updateActiveTaskStrip() {
+  const t = getActiveTask();
+  const nameEl = document.getElementById('activeTaskName');
+  const doneBtn = document.getElementById('taskDoneBtn');
+  if (t) {
+    nameEl.textContent = t.name;
+    if (doneBtn) doneBtn.style.display = '';
+  } else {
+    nameEl.textContent = tasks.length ? 'All tasks done!' : 'No tasks added';
+    if (doneBtn) doneBtn.style.display = 'none';
+  }
+}
+
+/* ════════════════════════════════════════════
+   AUDIO ENGINE
+════════════════════════════════════════════ */
+let actx = null;
+let muted = false;
+
+function getActx() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+
+function tone(freq, dur, type='sine', vol=0.22, decay=0.9) {
+  if (muted || cfg.audio==='silence') return;
+  try {
+    const ctx = getActx();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+dur*decay);
+    o.start(); o.stop(ctx.currentTime+dur);
+  } catch(e){}
+}
+
+function toneAt(freq, dur, delay, type='sine', vol=0.22) {
+  setTimeout(()=>tone(freq,dur,type,vol), delay);
+}
+
+const SFX = {
+  countdown: () => tone(880, 0.09, 'sine', 0.18),
+  work:      () => { tone(1047, 0.12, 'square', 0.14); toneAt(1319, 0.2, 130, 'square', 0.16); },
+  shortBreak:() => tone(440, 0.6, 'sine', 0.15, 0.82),
+  longBreak: () => { tone(330, 1.6, 'sine', 0.14, 0.94); toneAt(277, 1.2, 90, 'sine', 0.07); },
+  finish:    () => { [523,659,784,1047].forEach((f,i)=>toneAt(f,0.45,i*190,'sine',0.22)); },
+  tick:      () => tone(660, 0.06, 'sine', 0.09),
+  beep1:     () => tone(1047, 0.10, 'sine', 0.22),
+};
+
+function speak(text) {
+  if (cfg.audio!=='voice'||muted||!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate=1.0; u.pitch=1.0; speechSynthesis.speak(u);
+}
+
+/* ════════════════════════════════════════════
+   PHASE CONFIG
+════════════════════════════════════════════ */
+const PC = {
+  countdown:  {lbl:'Get Ready',    color:'#aeaeb2', bg:'#0a0a0a'},
+  work:       {lbl:'Focus',        color:'#ff9f0a', bg:'#140900'},
+  shortBreak: {lbl:'Short Break',  color:'#0a84ff', bg:'#000d1e'},
+  longBreak:  {lbl:'Long Break',   color:'#5ac8fa', bg:'#021520'},
+  done:       {lbl:'Done',         color:'#30d158', bg:'#011809'},
+};
+
+/* ════════════════════════════════════════════
+   TIMER STATE
+════════════════════════════════════════════ */
+let phase = null;
+let phaseRem = 0, phaseTotal = 0;
+let state = 'idle'; // idle | running | paused
+let sessStart = 0, sessElapsed = 0;
+let roundsComplete = 0;         // work rounds finished this session
+let totalRoundsThisSession = 0; // counter used for header display
+let inBreak = false;            // true when in short or long break
+let tick = null, lastTick = 0;
+let lastCountdownSec = -1;
+let wl = null;
+
+/* Build sequence dynamically: returns next phase given current state */
+function nextPhase() {
+  if (phase === 'countdown') return 'work';
+  if (phase === 'work') {
+    roundsComplete++;
+    totalRoundsThisSession++;
+    if (roundsComplete % cfg.rounds === 0) return 'longBreak';
+    return 'shortBreak';
+  }
+  if (phase === 'shortBreak' || phase === 'longBreak') return 'work';
+  return null;
+}
+
+function startSession() {
+  if (actx) { try { actx.close(); } catch(e){} actx = null; }
+  getActx();
+  roundsComplete = 0;
+  totalRoundsThisSession = 0;
+  inBreak = false;
+  sessStart = Date.now(); sessElapsed = 0;
+  completedThisSession = [];
+  document.getElementById('doneOvl').classList.remove('show');
+  document.getElementById('ringArea').classList.remove('is-paused');
+  document.getElementById('pauseIco').innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+  updateActiveTaskStrip();
+  showScreen('timer');
+  goPhase('countdown');
+  state = 'running';
+  startTick();
+  acquireWL();
+  renderRoundDots();
+}
+
+function goPhase(ph) {
+  phase = ph;
+  lastCountdownSec = -1;
+  inBreak = (ph === 'shortBreak' || ph === 'longBreak');
+
+  const dur = ph === 'countdown' ? cfg.countdown
+    : ph === 'work' ? cfg.work
+    : ph === 'shortBreak' ? cfg.shortBreak
+    : ph === 'longBreak' ? cfg.longBreak : 0;
+
+  phaseTotal = dur;
+  phaseRem = dur;
+
+  const p = PC[ph];
+  document.getElementById('phaseLbl').textContent = p.lbl;
+  document.getElementById('phaseLbl').style.color = p.color;
+  document.getElementById('timer').style.background = p.bg;
+  document.getElementById('rProg').style.stroke = p.color;
+
+  // Header: round info
+  const workRound = roundsComplete + (ph==='work' ? 1 : 0);
+  document.getElementById('tPos').textContent =
+    ph === 'countdown' ? 'Starting up...'
+    : inBreak ? (ph==='longBreak' ? 'Long Break' : `Break after round ${roundsComplete}`)
+    : `Round ${workRound}`;
+
+  // Skip break button visibility
+  document.getElementById('skipBreakBtn').style.opacity = inBreak ? '1' : '0.2';
+  document.getElementById('skipBreakBtn').style.pointerEvents = inBreak ? 'auto' : 'none';
+
+  // Play audio
+  if (cfg.audio === 'sounds' && SFX[ph]) SFX[ph]();
+  if (cfg.audio === 'voice') {
+    const phrases = {countdown:'Get ready', work:'Focus time', shortBreak:'Take a break', longBreak:'Long break time'};
+    if (phrases[ph]) speak(phrases[ph]);
+  }
+
+  renderRoundDots();
+  updateRing();
+}
+
+function endSession() {
+  state = 'idle';
+  clearInterval(tick); tick = null;
+  SFX.finish();
+  const totalSecs = Math.round((Date.now()-sessStart)/1000);
+  const tasksFinished = completedThisSession.length;
+
+  saveHistory({
+    date: new Date().toISOString(),
+    secs: totalSecs,
+    rounds: roundsComplete,
+    tasks: completedThisSession.slice(),
+    preset: activePreset,
+  });
+
+  document.getElementById('dTime').textContent = fmtDur(totalSecs);
+  document.getElementById('dRounds').textContent = roundsComplete;
+  document.getElementById('dTasks').textContent = tasksFinished;
+  document.getElementById('doneSub').textContent = roundsComplete >= cfg.rounds
+    ? 'Full cycle done.' : 'Good work.';
+
+  const dtEl = document.getElementById('doneTasks');
+  dtEl.innerHTML = completedThisSession.length
+    ? completedThisSession.map(n=>`<div class="done-task-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>${escHtml(n)}</div>`).join('')
+    : '<div class="done-task-row" style="color:var(--text3)">No tasks completed.</div>';
+
+  document.getElementById('timer').style.background = PC.done.bg;
+  document.getElementById('doneOvl').classList.add('show');
+  releaseWL();
+}
+
+function startTick() {
+  clearInterval(tick);
+  lastTick = 0;
+  tick = setInterval(()=>{
+    if (state!=='running') return;
+    const now = Date.now();
+    if (!lastTick){ lastTick=now; return; }
+    const dt = (now-lastTick)/1000;
+    lastTick = now;
+    phaseRem -= dt;
+    sessElapsed = (now-sessStart)/1000;
+
+    // 10s countdown ticks
+    const remSec = Math.ceil(phaseRem);
+    if (remSec>=1 && remSec<=10 && remSec!==lastCountdownSec) {
+      lastCountdownSec = remSec;
+      if (cfg.audio==='sounds') {
+        if (remSec<=3) SFX.beep1();
+        else SFX.tick();
+      }
+      if (cfg.audio==='voice' && phase!=='countdown') {
+        if (remSec===3) speak('Three');
+        else if (remSec===2) speak('Two');
+        else if (remSec===1) speak('One');
+      }
+    }
+
+    if (phaseRem<=0) {
+      const next = nextPhase();
+      if (!next) { endSession(); return; }
+      goPhase(next);
+    } else {
+      updateRing();
+    }
+  }, 80);
+}
+
+function togglePause() {
+  if (state==='running') {
+    state='paused'; lastTick=0;
+    document.getElementById('ringArea').classList.add('is-paused');
+    document.getElementById('pauseIco').innerHTML='<polygon points="5 3 19 12 5 21 5 3"/>';
+    document.getElementById('rSub').textContent='paused';
+  } else if (state==='paused') {
+    state='running'; lastTick=0;
+    document.getElementById('ringArea').classList.remove('is-paused');
+    document.getElementById('pauseIco').innerHTML='<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+    document.getElementById('rSub').textContent='tap to pause';
+  }
+}
+
+function skipBreak() {
+  if (!inBreak) return;
+  goPhase('work');
+}
+
+function exitTimer() {
+  if (state==='running'||state==='paused') {
+    if (!confirm('End this session?')) return;
+    const totalSecs = Math.round((Date.now()-sessStart)/1000);
+    if (totalSecs>5) {
+      saveHistory({
+        date: new Date().toISOString(),
+        secs: totalSecs,
+        rounds: roundsComplete,
+        tasks: completedThisSession.slice(),
+        preset: activePreset,
+        partial: true,
+      });
+    }
+  }
+  state='idle';
+  clearInterval(tick); tick=null;
+  releaseWL();
+  document.getElementById('timer').style.background='';
+  document.getElementById('doneOvl').classList.remove('show');
+  document.getElementById('ringArea').classList.remove('is-paused');
+  goScreen('cfg', document.querySelector('[data-sc="cfg"]'));
+}
+
+function restartTimer() {
+  document.getElementById('doneOvl').classList.remove('show');
+  startSession();
+}
+
+/* ════════════════════════════════════════════
+   RING + DOTS DISPLAY
+════════════════════════════════════════════ */
+const CIRC = 678.58;
+
+function updateRing() {
+  const rem = Math.max(0, phaseRem);
+  const offset = CIRC * ((phaseTotal-rem)/Math.max(phaseTotal,1));
+  document.getElementById('rProg').style.strokeDashoffset = Math.min(offset,CIRC);
+
+  const secs = Math.ceil(rem);
+  document.getElementById('rTime').textContent = fmtTime(secs);
+
+  if (state!=='paused') {
+    const el = Math.floor(sessElapsed);
+    document.getElementById('rSub').textContent = fmtTime(el)+' elapsed';
+  }
+}
+
+function renderRoundDots() {
+  const n = cfg.rounds;
+  const completed = roundsComplete % cfg.rounds;
+  const isInWork = phase==='work';
+  let html='';
+  for (let i=0;i<n;i++) {
+    const done = i < completed;
+    const current = !done && i===completed && isInWork;
+    html += `<div class="rdot${done?' done':''}${current?' current':''}"></div>`;
+  }
+  document.getElementById('roundDots').innerHTML=html;
+}
+
+/* ════════════════════════════════════════════
+   WAKE LOCK
+════════════════════════════════════════════ */
+async function acquireWL() {
+  try { if('wakeLock' in navigator) wl=await navigator.wakeLock.request('screen'); } catch(e){}
+}
+function releaseWL() { if(wl){wl.release();wl=null;} }
+
+/* ════════════════════════════════════════════
+   CONFIG
+════════════════════════════════════════════ */
+function loadCfg() {
+  try { cfg={...D,...JSON.parse(localStorage.getItem('pom')||'{}')}; } catch(e){ cfg={...D}; }
+  try { activePreset=localStorage.getItem('pom_preset')||'classic'; } catch(e){}
+  renderCfg();
+}
+function saveCfg() {
+  localStorage.setItem('pom', JSON.stringify(cfg));
+  localStorage.setItem('pom_preset', activePreset);
+}
+
+function renderCfg() {
+  document.getElementById('v-work').textContent      = fmtTime(cfg.work);
+  document.getElementById('v-shortBreak').textContent= fmtTime(cfg.shortBreak);
+  document.getElementById('v-longBreak').textContent = fmtTime(cfg.longBreak);
+  document.getElementById('v-rounds').textContent    = cfg.rounds;
+  document.getElementById('v-countdown').textContent = cfg.countdown+' sec';
+  renderAudio();
+}
+
+/* Audio */
+const AMODES = ['sounds','voice','silence'];
+const ALBLS  = {sounds:'Sound effects', voice:'Voice callouts', silence:'Silence'};
+const AICONS = {
+  sounds: `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>`,
+  voice:  `<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>`,
+  silence:`<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>`,
+};
+function renderAudio() {
+  const m=cfg.audio||'sounds';
+  document.getElementById('audioPillText').textContent=ALBLS[m];
+  document.getElementById('audioPillIcon').innerHTML=AICONS[m];
+  document.getElementById('audioBtn').querySelector('svg').innerHTML=AICONS[m];
+}
+function cycleAudio() {
+  const i=AMODES.indexOf(cfg.audio);
+  cfg.audio=AMODES[(i+1)%AMODES.length];
+  saveCfg(); renderAudio();
+  if(cfg.audio==='sounds') getActx();
+}
+
+/* Presets */
+function applyPreset(name) {
+  const p=PRESETS[name]; if(!p) return;
+  cfg={...cfg,...p};
+  activePreset=name;
+  saveCfg(); renderCfg();
+  document.querySelectorAll('.preset-btn').forEach(b=>
+    b.classList.toggle('active',b.dataset.p===name));
+}
+
+/* ════════════════════════════════════════════
+   BOTTOM SHEET
+════════════════════════════════════════════ */
+let sKey=null, sMins=0, sSecs=0, sCount=1;
+const TIME_KEYS  = ['work','shortBreak','longBreak','countdown'];
+const COUNT_KEYS = ['rounds'];
+const SHEET_LBLS = {work:'Focus Duration',shortBreak:'Short Break',longBreak:'Long Break',rounds:'Rounds before long break',countdown:'Countdown'};
+
+function openSheet(k) {
+  sKey=k;
+  document.getElementById('sheetTitle').textContent=SHEET_LBLS[k]||k;
+  if (k==='countdown') {
+    sCount=cfg.countdown;
+    document.getElementById('sheetBody').innerHTML=`
+      <div class="ce">
+        <button class="ce-btn" onclick="adjC(-1,3)">−</button>
+        <div class="ce-display" id="sc">${sCount}</div>
+        <button class="ce-btn" onclick="adjC(1,30)">+</button>
+      </div>
+      <div style="text-align:center;color:var(--text3);font-size:13px;margin-bottom:16px">seconds</div>
+      <button class="sheet-done" onclick="confirmSheet()">Done</button>`;
+  } else if (COUNT_KEYS.includes(k)) {
+    sCount=cfg[k]||1;
+    document.getElementById('sheetBody').innerHTML=`
+      <div class="ce">
+        <button class="ce-btn" onclick="adjC(-1,1)">−</button>
+        <div class="ce-display" id="sc">${sCount}</div>
+        <button class="ce-btn" onclick="adjC(1,8)">+</button>
+      </div>
+      <button class="sheet-done" onclick="confirmSheet()">Done</button>`;
+  } else if (TIME_KEYS.includes(k)) {
+    const v=cfg[k]||0;
+    sMins=Math.floor(v/60); sSecs=v%60;
+    document.getElementById('sheetBody').innerHTML=`
+      <div class="te">
+        <div class="te-unit">
+          <div class="te-lbl">Min</div>
+          <div class="te-btns">
+            <button class="te-btn" onclick="adjM(1)">+</button>
+            <div class="te-display" id="sm">${pad(sMins)}</div>
+            <button class="te-btn" onclick="adjM(-1)">−</button>
+          </div>
+        </div>
+        <div class="te-col">:</div>
+        <div class="te-unit">
+          <div class="te-lbl">Sec</div>
+          <div class="te-btns">
+            <button class="te-btn" onclick="adjS(5)">+</button>
+            <div class="te-display" id="ss">${pad(sSecs)}</div>
+            <button class="te-btn" onclick="adjS(-5)">−</button>
+          </div>
+        </div>
+      </div>
+      <button class="sheet-done" onclick="confirmSheet()">Done</button>`;
+  }
+  document.getElementById('sheetOverlay').classList.add('open');
+  document.getElementById('sheet').classList.add('open');
+}
+function closeSheet() {
+  document.getElementById('sheetOverlay').classList.remove('open');
+  document.getElementById('sheet').classList.remove('open');
+}
+function adjM(d){ sMins=Math.max(0,Math.min(99,sMins+d)); upd('sm',pad(sMins)); }
+function adjS(d){ sSecs=Math.max(0,Math.min(55,sSecs+d)); upd('ss',pad(sSecs)); }
+function adjC(d,bound){ sCount=d>0?Math.min(bound,sCount+1):Math.max(1,sCount-1); upd('sc',sCount); }
+function upd(id,v){ const el=document.getElementById(id); if(el) el.textContent=v; }
+function pad(n){ return String(n).padStart(2,'0'); }
+function confirmSheet() {
+  if(!sKey) return;
+  if(sKey==='countdown') cfg.countdown=sCount;
+  else if(COUNT_KEYS.includes(sKey)) cfg[sKey]=sCount;
+  else cfg[sKey]=sMins*60+sSecs;
+  activePreset='custom';
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+  saveCfg(); renderCfg(); closeSheet();
+}
+
+/* ════════════════════════════════════════════
+   HISTORY
+════════════════════════════════════════════ */
+const MAX_SESSIONS = 20;
+
+function saveHistory(s) {
+  const h = JSON.parse(localStorage.getItem('pom_h')||'[]');
+  h.unshift(s);
+  if(h.length>MAX_SESSIONS) h.pop();
+  localStorage.setItem('pom_h', JSON.stringify(h));
+}
+
+function deleteHistSession(idx) {
+  const h=JSON.parse(localStorage.getItem('pom_h')||'[]');
+  h.splice(idx,1);
+  localStorage.setItem('pom_h',JSON.stringify(h));
+  renderHistory();
+}
+
+function renderHistory() {
+  const h=JSON.parse(localStorage.getItem('pom_h')||'[]');
+  const c=document.getElementById('histContent');
+
+  const countEl=document.getElementById('histCount');
+  if(countEl) countEl.textContent=h.length?`${h.length} / ${MAX_SESSIONS}`:'';
+
+  if(!h.length) {
+    c.innerHTML=`<div class="hist-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <p>No sessions yet.<br>Your focus sessions appear here.</p>
+    </div>`; return;
+  }
+
+  const now=new Date();
+  const thisMon=new Date(now);
+  thisMon.setDate(now.getDate()-((now.getDay()+6)%7));
+  thisMon.setHours(0,0,0,0);
+
+  const groups={};
+  h.forEach((s,i)=>{
+    const d=new Date(s.date);
+    const mon=new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
+    const key=mon.toISOString().slice(0,10);
+    if(!groups[key]) groups[key]=[];
+    groups[key].push({s,i});
+  });
+
+  let html='<div class="hist-list">';
+  for(const[key,rows] of Object.entries(groups)){
+    const wDate=new Date(key);
+    const isThis=wDate>=thisMon;
+    const wLbl=isThis?'This week':wDate.toLocaleDateString('en-AU',{day:'numeric',month:'short'})+' week';
+    html+=`<div class="wk-lbl">${wLbl}</div><div class="wk-group">`;
+    rows.forEach(({s,i})=>{
+      const d=new Date(s.date);
+      const day=d.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+      const tm=d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+      const tasksStr=s.tasks?.length?`${s.tasks.length} task${s.tasks.length!==1?'s':''} done`:'';
+      html+=`
+        <div class="hist-item" data-idx="${i}">
+          <div class="hist-swipe-wrap">
+            <div class="hist-row" onclick="toggleHistItem(${i})">
+              <div class="hist-dot"${s.partial?' style="background:var(--text3)"':''}></div>
+              <div class="hist-info">
+                <div class="hist-date">${day}${s.partial?` <span style="font-size:11px;color:var(--text3);font-weight:500">partial</span>`:''}</div>
+                <div class="hist-meta">${tm} · ${PRESET_LBLS[s.preset]||s.preset||'Custom'} · ${s.rounds} round${s.rounds!==1?'s':''}${tasksStr?' · '+tasksStr:''}</div>
+              </div>
+              <div class="hist-dur">${fmtDur(s.secs)}</div>
+              <svg class="hist-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="hist-expand">
+              ${s.tasks&&s.tasks.length?`<div class="hist-tasks-done">
+                ${s.tasks.map(t=>`<div class="hist-task-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>${escHtml(t)}</div>`).join('')}
+              </div>`:'<div style="padding:10px 0;font-size:13px;color:var(--text3)">No tasks logged this session.</div>'}
+              <button class="hist-share-btn" onclick="event.stopPropagation();shareHistSession(${i})">📸 Share session</button>
+            </div>
+          </div>
+          <button class="hist-del-btn" onclick="event.stopPropagation();deleteHistSession(${i})">Delete</button>
+        </div>`;
+    });
+    html+='</div>';
+  }
+  html+='</div>';
+  c.innerHTML=html;
+
+  document.querySelectorAll('.hist-item').forEach(el=>initHistSwipe(el));
+}
+
+function toggleHistItem(idx) {
+  const item=document.querySelector(`.hist-item[data-idx="${idx}"]`);
+  if(!item) return;
+  const wrap=item.querySelector('.hist-swipe-wrap');
+  if(wrap&&wrap._swipeTx!==0){
+    wrap._swipeTx=0; wrap.style.transition='transform 0.22s ease'; wrap.style.transform='translateX(0)'; return;
+  }
+  const wasOpen=item.classList.contains('open');
+  document.querySelectorAll('.hist-item.open').forEach(el=>el.classList.remove('open'));
+  if(!wasOpen) item.classList.add('open');
+}
+
+function initHistSwipe(itemEl) {
+  const wrap=itemEl.querySelector('.hist-swipe-wrap');
+  if(!wrap) return;
+  wrap._swipeTx=0;
+  let startX=0,startY=0,lockAxis=null,active=false;
+  wrap.addEventListener('touchstart',e=>{
+    startX=e.touches[0].clientX;startY=e.touches[0].clientY;active=true;lockAxis=null;wrap.style.transition='none';
+    document.querySelectorAll('.hist-swipe-wrap').forEach(w=>{if(w!==wrap&&w._swipeTx!==0){w._swipeTx=0;w.style.transition='transform 0.22s ease';w.style.transform='translateX(0)';}});
+  },{passive:true});
+  wrap.addEventListener('touchmove',e=>{
+    if(!active)return;
+    const dx=e.touches[0].clientX-startX,dy=e.touches[0].clientY-startY;
+    if(!lockAxis){if(Math.abs(dx)>5||Math.abs(dy)>5)lockAxis=Math.abs(dx)>=Math.abs(dy)?'h':'v';}
+    if(lockAxis!=='h')return;
+    wrap.style.transform=`translateX(${Math.max(-80,Math.min(0,wrap._swipeTx+dx))}px)`;
+  },{passive:true});
+  wrap.addEventListener('touchend',e=>{
+    if(!active||lockAxis!=='h'){active=false;return;}
+    active=false;
+    const dx=e.changedTouches[0].clientX-startX;
+    wrap.style.transition='transform 0.22s ease';
+    wrap._swipeTx=wrap._swipeTx===0?(dx<-40?-80:0):(dx>20?0:-80);
+    wrap.style.transform=`translateX(${wrap._swipeTx}px)`;
+  });
+}
+
+/* ════════════════════════════════════════════
+   SHARE CARD
+════════════════════════════════════════════ */
+async function shareHistSession(idx) {
+  const h=JSON.parse(localStorage.getItem('pom_h')||'[]');
+  const s=h[idx]; if(!s) return;
+  const cvs=generateShareCard(s);
+  const blob=await new Promise(r=>cvs.toBlob(r,'image/png'));
+  const file=new File([blob],'focus-session.png',{type:'image/png'});
+  try {
+    if(navigator.share&&navigator.canShare?.({files:[file]})){
+      await navigator.share({files:[file],text:`${fmtDur(s.secs)} of deep focus. ${s.rounds} round${s.rounds!==1?'s':''}. System, not willpower.\n\nFree Pomodoro Focus Timer`});
+      return;
+    }
+  } catch(e){ if(e.name==='AbortError') return; }
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='focus-session.png'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
+function generateShareCard(s) {
+  const W=1080,H=1350;
+  const cvs=document.createElement('canvas');
+  cvs.width=W; cvs.height=H;
+  const c=cvs.getContext('2d');
+  const PRESET=s.preset||'classic';
+  const ACCENT=PRESET==='deepwork'?'#5ac8fa':PRESET==='sprint'?'#bf5af2':'#ff9f0a';
+
+  c.fillStyle='#0a0a0a'; c.fillRect(0,0,W,H);
+  c.fillStyle=ACCENT; c.fillRect(0,0,W,10);
+
+  c.fillStyle=ACCENT;
+  c.font='bold 52px -apple-system, sans-serif';
+  c.textAlign='center';
+  c.fillText('POMODORO FOCUS TIMER',W/2,100);
+
+  c.font='100px sans-serif';
+  c.fillText('🍅',W/2,250);
+
+  c.fillStyle='#ffffff';
+  c.font='bold 80px -apple-system, sans-serif';
+  c.fillText((PRESET_LBLS[PRESET]||'Custom').toUpperCase(),W/2,380);
+
+  c.strokeStyle='rgba(255,255,255,0.08)'; c.lineWidth=2;
+  c.beginPath(); c.moveTo(80,418); c.lineTo(W-80,418); c.stroke();
+
+  c.fillStyle=ACCENT;
+  c.font='bold 188px -apple-system, sans-serif';
+  c.fillText(fmtDur(s.secs),W/2,650);
+
+  c.fillStyle='rgba(255,255,255,0.38)';
+  c.font='40px -apple-system, sans-serif';
+  c.fillText('TOTAL TIME',W/2,706);
+
+  const col1=220,col2=W-220;
+  c.fillStyle='#ffffff';
+  c.font='bold 86px -apple-system, sans-serif';
+  c.textAlign='left';  c.fillText(s.rounds,col1,868);
+  c.textAlign='right'; c.fillText(s.tasks?.length||0,col2,868);
+  c.fillStyle='rgba(255,255,255,0.38)';
+  c.font='36px -apple-system, sans-serif';
+  c.textAlign='left';  c.fillText('ROUNDS',col1,918);
+  c.textAlign='right'; c.fillText('TASKS',col2,918);
+
+  c.strokeStyle='rgba(255,255,255,0.08)'; c.lineWidth=2;
+  c.beginPath(); c.moveTo(W/2,820); c.lineTo(W/2,930); c.stroke();
+
+  if(s.tasks&&s.tasks.length) {
+    c.fillStyle='rgba(255,255,255,0.28)';
+    c.font='30px -apple-system, sans-serif';
+    c.textAlign='center';
+    s.tasks.slice(0,3).forEach((t,i)=>c.fillText('+ '+t.slice(0,40),W/2,1010+i*48));
+  }
+
+  const d=new Date(s.date);
+  c.fillStyle='rgba(255,255,255,0.3)';
+  c.font='34px -apple-system, sans-serif';
+  c.textAlign='center';
+  c.fillText(`${d.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'})}  ·  ${d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})}`,W/2,1168);
+
+  c.fillStyle='rgba(255,255,255,0.48)';
+  c.font='italic 38px Georgia, serif';
+  c.fillText('"System, not willpower."',W/2,1248);
+
+  c.fillStyle=ACCENT;
+  c.font='bold 32px -apple-system, sans-serif';
+  c.fillText('Free at izzyoj.github.io/tools',W/2,1310);
+
+  c.fillStyle=ACCENT; c.fillRect(0,H-10,W,10);
+  return cvs;
+}
+
+/* ════════════════════════════════════════════
+   SCREEN ROUTING
+════════════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const nav=document.getElementById('nav');
+  if(id==='timer'){ nav.classList.add('hidden'); }
+  else { nav.classList.remove('hidden'); if(id==='history') renderHistory(); }
+}
+function goScreen(id,btn) {
+  showScreen(id);
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+}
+
+/* ════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════ */
+function fmtTime(s) {
+  if(!s||s<=0) return '0:00';
+  return `${Math.floor(s/60)}:${pad(s%60)}`;
+}
+function fmtDur(s) {
+  if(!s||s<=0) return '0:00';
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  if(h) return `${h}h ${m}m`;
+  if(m) return sec?`${m}m ${sec}s`:`${m}m`;
+  return `${sec}s`;
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ════════════════════════════════════════════
+   EVENT WIRING
+════════════════════════════════════════════ */
+document.getElementById('startBtn').addEventListener('click', startSession);
+document.getElementById('audioBtn').addEventListener('click', cycleAudio);
+document.getElementById('audioPill').addEventListener('click', cycleAudio);
+document.getElementById('exitBtn').addEventListener('click', exitTimer);
+document.getElementById('stopBtn').addEventListener('click', exitTimer);
+
+document.querySelectorAll('.sr[data-k]').forEach(r=>
+  r.addEventListener('click', ()=>openSheet(r.dataset.k)));
+
+document.querySelectorAll('.preset-btn').forEach(b=>
+  b.addEventListener('click', ()=>applyPreset(b.dataset.p)));
+
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible'&&state==='running') acquireWL();
+});
+
+/* ════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════ */
+loadCfg();
+loadTasks();
+</script>
+</body>
+</html>
