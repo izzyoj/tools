@@ -338,6 +338,33 @@ html, body {
 .hist-date { font-size: 15px; font-weight: 500; }
 .hist-meta { font-size: 13px; color: var(--text2); margin-top: 2px; }
 .hist-dur { font-size: 15px; font-weight: 600; }
+.hist-chev {
+  flex-shrink: 0; margin-left: 4px;
+  transition: transform 0.2s;
+}
+.hist-item.open .hist-chev { transform: rotate(90deg); }
+.hist-item .hist-row { cursor: pointer; }
+
+/* Expand panel */
+.hist-expand {
+  display: none; padding: 0 16px 16px;
+}
+.hist-item.open .hist-expand { display: block; }
+.hist-share-preview {
+  display: block; width: 100%; aspect-ratio: 4/5;
+  border-radius: 12px; margin: 10px 0 10px;
+  background: #111;
+}
+.hist-share-btn {
+  width: 100%; padding: 13px;
+  background: var(--orange);
+  border: none; border-radius: 12px;
+  font-size: 15px; font-weight: 700; color: #000;
+  cursor: pointer; letter-spacing: 0.01em;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: opacity 0.15s;
+}
+.hist-share-btn:active { opacity: 0.8; }
 
 /* ═══════════════════════════════════════════
    BOTTOM SHEET
@@ -1106,6 +1133,8 @@ function confirmSheet() {
 /* ════════════════════════════════════════════
    HISTORY
 ════════════════════════════════════════════ */
+let histSessions = [];
+
 function saveHistory(s) {
   const h = JSON.parse(localStorage.getItem('kbt_h') || '[]');
   h.unshift(s);
@@ -1115,6 +1144,7 @@ function saveHistory(s) {
 
 function renderHistory() {
   const h = JSON.parse(localStorage.getItem('kbt_h') || '[]');
+  histSessions = h;
   const c = document.getElementById('histContent');
   if (!h.length) {
     c.innerHTML = `<div class="hist-empty">
@@ -1128,15 +1158,15 @@ function renderHistory() {
     return;
   }
 
-  // Group by week
+  // Group by week — store original index alongside each session
   const groups = {};
-  h.forEach(s => {
+  h.forEach((s, i) => {
     const d = new Date(s.date);
     const mon = new Date(d);
     mon.setDate(d.getDate() - ((d.getDay()+6)%7));
     const key = mon.toISOString().slice(0,10);
     if (!groups[key]) groups[key] = [];
-    groups[key].push(s);
+    groups[key].push({s, i});
   });
 
   const now = new Date();
@@ -1151,23 +1181,183 @@ function renderHistory() {
     const wLbl = isThis ? 'This week'
       : wDate.toLocaleDateString('en-AU',{day:'numeric',month:'short'}) + ' week';
     html += `<div class="wk-lbl">${wLbl}</div><div class="wk-group">`;
-    rows.forEach(s => {
+    rows.forEach(({s, i}) => {
       const d = new Date(s.date);
       const day = d.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
       const tm = d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
-      html += `<div class="hist-row">
-        <div class="hist-dot" ${s.partial ? 'style="background:var(--text3)"' : ''}></div>
-        <div class="hist-info">
-          <div class="hist-date">${day}${s.partial ? ' <span style="font-size:11px;color:var(--text3);font-weight:500">partial</span>' : ''}</div>
-          <div class="hist-meta">${tm} · ${s.label || 'Session'} · ${s.sets} sets · ${s.cycles} cycle${s.cycles!==1?'s':''}</div>
-        </div>
-        <div class="hist-dur">${fmtDur(s.secs)}</div>
-      </div>`;
+      html += `
+        <div class="hist-item" data-idx="${i}" onclick="toggleHist(${i})">
+          <div class="hist-row">
+            <div class="hist-dot" ${s.partial ? 'style="background:var(--text3)"' : ''}></div>
+            <div class="hist-info">
+              <div class="hist-date">${day}${s.partial ? ' <span style="font-size:11px;color:var(--text3);font-weight:500">partial</span>' : ''}</div>
+              <div class="hist-meta">${tm} · ${s.label || 'Session'} · ${s.sets} sets · ${s.cycles} cycle${s.cycles!==1?'s':''}</div>
+            </div>
+            <div class="hist-dur">${fmtDur(s.secs)}</div>
+            <svg class="hist-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="hist-expand">
+            <canvas class="hist-share-preview"></canvas>
+            <button class="hist-share-btn" onclick="event.stopPropagation();shareSession(${i})">
+              📸 Share session
+            </button>
+          </div>
+        </div>`;
     });
     html += '</div>';
   }
   html += '</div>';
   c.innerHTML = html;
+}
+
+function toggleHist(idx) {
+  const item = document.querySelector(`.hist-item[data-idx="${idx}"]`);
+  if (!item) return;
+  const wasOpen = item.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.hist-item.open').forEach(el => el.classList.remove('open'));
+  if (!wasOpen) {
+    item.classList.add('open');
+    // Draw preview after layout settles
+    requestAnimationFrame(() => {
+      const s = histSessions[idx];
+      const preview = item.querySelector('.hist-share-preview');
+      if (!s || !preview) return;
+      const cw = preview.offsetWidth * (window.devicePixelRatio || 1);
+      const ch = Math.round(cw * 1350 / 1080);
+      preview.width = cw; preview.height = ch;
+      preview.getContext('2d').drawImage(generateShareCard(s), 0, 0, cw, ch);
+    });
+  }
+}
+
+/* ════════════════════════════════════════════
+   SHARE CARD (canvas, 1080×1350 Instagram 4:5)
+════════════════════════════════════════════ */
+function fmtCardTime(secs) {
+  const m = Math.floor(Math.abs(secs) / 60);
+  const s = Math.abs(secs) % 60;
+  return m + ':' + pad(s);
+}
+
+function generateShareCard(s) {
+  const W = 1080, H = 1350;
+  const cvs = document.createElement('canvas');
+  cvs.width = W; cvs.height = H;
+  const c = cvs.getContext('2d');
+
+  const ACCENT = {
+    'KBX Round': '#5ac8fa',
+    'KB Quick':  '#ff9f0a',
+    'Tabata':    '#ff453a',
+  }[s.label] || '#ff9f0a';
+
+  // Background
+  c.fillStyle = '#0a0a0a';
+  c.fillRect(0, 0, W, H);
+
+  // Top accent bar
+  c.fillStyle = ACCENT;
+  c.fillRect(0, 0, W, 10);
+
+  // Header — DOUBLE KB TIMER
+  c.fillStyle = ACCENT;
+  c.font = 'bold 54px -apple-system, sans-serif';
+  c.textAlign = 'center';
+  c.fillText('DOUBLE KB TIMER', W/2, 106);
+
+  // Fire emoji
+  c.font = '108px sans-serif';
+  c.fillText('🔥', W/2, 258);
+
+  // Session type
+  c.fillStyle = '#ffffff';
+  c.font = 'bold 84px -apple-system, sans-serif';
+  c.fillText((s.label || 'SESSION').toUpperCase(), W/2, 390);
+
+  // Thin divider
+  c.strokeStyle = 'rgba(255,255,255,0.08)';
+  c.lineWidth = 2;
+  c.beginPath(); c.moveTo(80, 428); c.lineTo(W-80, 428); c.stroke();
+
+  // Big time
+  c.fillStyle = ACCENT;
+  c.font = 'bold 192px -apple-system, sans-serif';
+  c.fillText(fmtCardTime(s.secs), W/2, 660);
+
+  c.fillStyle = 'rgba(255,255,255,0.38)';
+  c.font = '40px -apple-system, sans-serif';
+  c.fillText('TOTAL TIME', W/2, 716);
+
+  // Stats — SETS left, CYCLES right
+  const col1 = 220, col2 = W - 220;
+  c.fillStyle = '#ffffff';
+  c.font = 'bold 86px -apple-system, sans-serif';
+  c.textAlign = 'left';  c.fillText(s.sets,   col1,     878);
+  c.textAlign = 'right'; c.fillText(s.cycles, col2,     878);
+
+  c.fillStyle = 'rgba(255,255,255,0.38)';
+  c.font = '36px -apple-system, sans-serif';
+  c.textAlign = 'left';  c.fillText('SETS',   col1,     928);
+  c.textAlign = 'right'; c.fillText('CYCLES', col2,     928);
+
+  // Vertical divider between stats
+  c.strokeStyle = 'rgba(255,255,255,0.08)';
+  c.lineWidth = 2;
+  c.beginPath(); c.moveTo(W/2, 830); c.lineTo(W/2, 940); c.stroke();
+
+  // Date + time
+  const d = new Date(s.date);
+  const dateStr = d.toLocaleDateString('en-AU', {weekday:'long', day:'numeric', month:'long'});
+  const timeStr = d.toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'});
+  c.fillStyle = 'rgba(255,255,255,0.3)';
+  c.font = '36px -apple-system, sans-serif';
+  c.textAlign = 'center';
+  c.fillText(`${dateStr}  ·  ${timeStr}`, W/2, 1022);
+
+  // Tagline
+  c.fillStyle = 'rgba(255,255,255,0.48)';
+  c.font = 'italic 40px Georgia, serif';
+  c.fillText('"System, not willpower."', W/2, 1142);
+
+  // CTA
+  c.fillStyle = ACCENT;
+  c.font = 'bold 34px -apple-system, sans-serif';
+  c.fillText('Free at izzyoj.github.io/tools', W/2, 1260);
+
+  // Bottom accent bar
+  c.fillStyle = ACCENT;
+  c.fillRect(0, H - 10, W, 10);
+
+  return cvs;
+}
+
+async function shareSession(idx) {
+  const s = histSessions[idx];
+  if (!s) return;
+
+  const cvs = generateShareCard(s);
+  const blob = await new Promise(r => cvs.toBlob(r, 'image/png'));
+  const file = new File([blob], 'double-kb-session.png', {type: 'image/png'});
+
+  // Try native share sheet (mobile)
+  try {
+    if (navigator.share && navigator.canShare?.({files: [file]})) {
+      await navigator.share({
+        files: [file],
+        text: `${fmtCardTime(s.secs)} ${s.label || 'session'} done. System, not willpower. 🔥\n\nFree Double KB Timer 👇`,
+      });
+      return;
+    }
+  } catch(e) {
+    if (e.name === 'AbortError') return; // user cancelled share sheet
+  }
+
+  // Fallback: download the image (desktop / unsupported browsers)
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'double-kb-session.png'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
 /* ════════════════════════════════════════════
