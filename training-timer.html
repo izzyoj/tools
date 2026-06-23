@@ -312,8 +312,12 @@ html, body {
 /* ═══════════════════════════════════════════
    HISTORY SCREEN
 ═══════════════════════════════════════════ */
-.hist-header { padding: 20px 20px 10px; }
+.hist-header {
+  padding: 20px 20px 10px;
+  display: flex; align-items: baseline; justify-content: space-between;
+}
 .hist-title { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; }
+.hist-count { font-size: 13px; color: var(--text3); font-weight: 500; }
 
 .hist-empty {
   flex: 1; display: flex; flex-direction: column;
@@ -349,7 +353,18 @@ html, body {
   transition: transform 0.2s;
 }
 .hist-item.open .hist-chev { transform: rotate(90deg); }
+
+/* Swipe-to-delete */
+.hist-item { position: relative; overflow: hidden; }
+.hist-swipe-wrap { position: relative; background: var(--surface); }
 .hist-item .hist-row { cursor: pointer; }
+.hist-del-btn {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 80px;
+  background: var(--red); border: none;
+  color: #fff; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.01em; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
 
 /* Expand panel */
 .hist-expand {
@@ -672,6 +687,7 @@ html, body {
 <div class="screen" id="history">
   <div class="hist-header">
     <h1 class="hist-title">History</h1>
+    <span class="hist-count" id="histCount"></span>
   </div>
   <div id="histContent"></div>
 </div>
@@ -1156,11 +1172,20 @@ function confirmSheet() {
 ════════════════════════════════════════════ */
 let histSessions = [];
 
+const MAX_SESSIONS = 20;
+
 function saveHistory(s) {
   const h = JSON.parse(localStorage.getItem('kbt_h') || '[]');
   h.unshift(s);
-  if (h.length > 30) h.pop();
+  if (h.length > MAX_SESSIONS) h.pop();
   localStorage.setItem('kbt_h', JSON.stringify(h));
+}
+
+function deleteSession(idx) {
+  const h = JSON.parse(localStorage.getItem('kbt_h') || '[]');
+  h.splice(idx, 1);
+  localStorage.setItem('kbt_h', JSON.stringify(h));
+  renderHistory();
 }
 
 function renderHistory() {
@@ -1195,6 +1220,10 @@ function renderHistory() {
   thisMon.setDate(now.getDate() - ((now.getDay()+6)%7));
   thisMon.setHours(0,0,0,0);
 
+  // Session counter
+  const countEl = document.getElementById('histCount');
+  if (countEl) countEl.textContent = `${h.length} / ${MAX_SESSIONS}`;
+
   let html = '<div class="hist-list">';
   for (const [key, rows] of Object.entries(groups)) {
     const wDate = new Date(key);
@@ -1207,39 +1236,55 @@ function renderHistory() {
       const day = d.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
       const tm = d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
       html += `
-        <div class="hist-item" data-idx="${i}" onclick="toggleHist(${i})">
-          <div class="hist-row">
-            <div class="hist-dot" ${s.partial ? 'style="background:var(--text3)"' : ''}></div>
-            <div class="hist-info">
-              <div class="hist-date">${day}${s.partial ? ' <span style="font-size:11px;color:var(--text3);font-weight:500">partial</span>' : ''}</div>
-              <div class="hist-meta">${tm} · ${s.label || 'Session'} · ${s.sets} sets · ${s.cycles} cycle${s.cycles!==1?'s':''}</div>
+        <div class="hist-item" data-idx="${i}">
+          <div class="hist-swipe-wrap">
+            <div class="hist-row" onclick="toggleHist(${i})">
+              <div class="hist-dot" ${s.partial ? 'style="background:var(--text3)"' : ''}></div>
+              <div class="hist-info">
+                <div class="hist-date">${day}${s.partial ? ' <span style="font-size:11px;color:var(--text3);font-weight:500">partial</span>' : ''}</div>
+                <div class="hist-meta">${tm} · ${s.label || 'Session'} · ${s.sets} sets · ${s.cycles} cycle${s.cycles!==1?'s':''}</div>
+              </div>
+              <div class="hist-dur">${fmtDur(s.secs)}</div>
+              <svg class="hist-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
             </div>
-            <div class="hist-dur">${fmtDur(s.secs)}</div>
-            <svg class="hist-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            <div class="hist-expand">
+              <canvas class="hist-share-preview"></canvas>
+              <button class="hist-share-btn" onclick="event.stopPropagation();shareSession(${i})">
+                📸 Share session
+              </button>
+            </div>
           </div>
-          <div class="hist-expand">
-            <canvas class="hist-share-preview"></canvas>
-            <button class="hist-share-btn" onclick="event.stopPropagation();shareSession(${i})">
-              📸 Share session
-            </button>
-          </div>
+          <button class="hist-del-btn" onclick="event.stopPropagation();deleteSession(${i})">Delete</button>
         </div>`;
     });
     html += '</div>';
   }
   html += '</div>';
   c.innerHTML = html;
+
+  // Wire swipe-to-delete on each card
+  document.querySelectorAll('.hist-item').forEach(el => {
+    initSwipeDelete(el);
+  });
 }
 
 function toggleHist(idx) {
   const item = document.querySelector(`.hist-item[data-idx="${idx}"]`);
   if (!item) return;
+
+  // If swiped open, close the swipe instead of toggling expand
+  const wrap = item.querySelector('.hist-swipe-wrap');
+  if (wrap && wrap._swipeTx !== 0) {
+    wrap._swipeTx = 0;
+    wrap.style.transition = 'transform 0.22s ease';
+    wrap.style.transform = 'translateX(0)';
+    return;
+  }
+
   const wasOpen = item.classList.contains('open');
-  // Close all
   document.querySelectorAll('.hist-item.open').forEach(el => el.classList.remove('open'));
   if (!wasOpen) {
     item.classList.add('open');
-    // Draw preview after layout settles
     requestAnimationFrame(() => {
       const s = histSessions[idx];
       const preview = item.querySelector('.hist-share-preview');
@@ -1250,6 +1295,53 @@ function toggleHist(idx) {
       preview.getContext('2d').drawImage(generateShareCard(s), 0, 0, cw, ch);
     });
   }
+}
+
+function initSwipeDelete(itemEl) {
+  const wrap = itemEl.querySelector('.hist-swipe-wrap');
+  if (!wrap) return;
+  wrap._swipeTx = 0;
+  let startX = 0, startY = 0, lockAxis = null, active = false;
+
+  wrap.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    active = true; lockAxis = null;
+    wrap.style.transition = 'none';
+    // Close any other open swipes
+    document.querySelectorAll('.hist-swipe-wrap').forEach(w => {
+      if (w !== wrap && w._swipeTx !== 0) {
+        w._swipeTx = 0;
+        w.style.transition = 'transform 0.22s ease';
+        w.style.transform = 'translateX(0)';
+      }
+    });
+  }, {passive: true});
+
+  wrap.addEventListener('touchmove', e => {
+    if (!active) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!lockAxis) {
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
+        lockAxis = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
+    }
+    if (lockAxis !== 'h') return;
+    wrap.style.transform = `translateX(${Math.max(-80, Math.min(0, wrap._swipeTx + dx))}px)`;
+  }, {passive: true});
+
+  wrap.addEventListener('touchend', e => {
+    if (!active || lockAxis !== 'h') { active = false; return; }
+    active = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    wrap.style.transition = 'transform 0.22s ease';
+    if (wrap._swipeTx === 0) {
+      wrap._swipeTx = dx < -40 ? -80 : 0;
+    } else {
+      wrap._swipeTx = dx > 20 ? 0 : -80;
+    }
+    wrap.style.transform = `translateX(${wrap._swipeTx}px)`;
+  });
 }
 
 /* ════════════════════════════════════════════
