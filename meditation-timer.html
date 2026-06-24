@@ -466,7 +466,6 @@ body::before {
 <div class="view" id="view-timer">
   <div class="hdr">
     <span class="hdr-title" id="timer-hdr-lbl">Session</span>
-    <button class="end-btn" onclick="confirmEnd()">End Session</button>
   </div>
   <div id="timer-body"></div>
 </div>
@@ -575,7 +574,7 @@ const S = {
   ambNode:       null,
   ambGain:       null,
   // challenge select
-  selDays:       21,
+  selDays:       7,
   selTime:       'flexible',
   targetCycles:  4,
 };
@@ -818,7 +817,7 @@ function buildDots(c) {
 
 function startChallenge(days, time) {
   setChallenge({ days, originalDays: days, started: Math.floor(Date.now()/1000), sessions: [], daysCompleted: 0, sessionTime: time });
-  S.selDays = 21; S.selTime = 'flexible';
+  S.selDays = 7; S.selTime = 'flexible';
   showView('home');
 }
 
@@ -1165,25 +1164,25 @@ function renderChalSel() {
   const e = getExplore();
   const n = e.count || 0;
   const el = document.getElementById('chal-body');
+  const DAY_LABELS = { 7: 'Grit', 14: 'Determination', 21: 'Practice', 28: 'Compound', 35: 'Integration', 42: 'Identity' };
 
   el.innerHTML = `
     ${n > 0 ? `<div class="notice info" style="margin-bottom:20px">You have already done <strong>${n} session${n!==1?'s':''}</strong>. Closer than you think.</div>` : ''}
-    <p class="lbl" style="margin-bottom:12px">Choose your commitment</p>
-    <div class="protocol-card ${S.selDays===40?'on':''}" onclick="selDays(40)">
-      <div class="p-badge">The Protocol</div>
-      <div class="p-days">40 Days</div>
-      <div class="p-line">The psychiatrist said 40 days. This is why.</div>
-    </div>
-    <div class="pick-grid cols3" style="margin-bottom:16px">
+    <p class="lbl" style="margin-bottom:12px">How many days?</p>
+    <div class="pick-grid cols3" style="margin-bottom:20px">
       ${CHAL_OPTS.map(d => `
         <div class="pick-btn ${S.selDays===d?'on':''}" onclick="selDays(${d})">
           <span style="font-size:20px;font-weight:800">${d}</span>
-          <span class="p-sub">days</span>
+          <span class="p-sub">${DAY_LABELS[d] || 'days'}</span>
         </div>
       `).join('')}
     </div>
-    <p class="lbl" style="margin-bottom:10px">Preferred session time</p>
-    <div class="pick-grid cols3" style="margin-bottom:24px">
+    <div class="phase-block" style="margin-bottom:24px">
+      <div class="phase-title" style="margin-bottom:6px">${expectTitle(S.selDays)}</div>
+      <div class="phase-copy">${expectCopy(S.selDays)}</div>
+    </div>
+    <p class="lbl" style="margin-bottom:10px">Session time</p>
+    <div class="pick-grid cols3" style="margin-bottom:28px">
       ${[['morning','🌅'],['evening','🌙'],['flexible','🕐']].map(([t,ic]) => `
         <div class="pick-btn ${S.selTime===t?'on':''}" onclick="selTime('${t}')">
           <span style="font-size:20px">${ic}</span>
@@ -1191,12 +1190,7 @@ function renderChalSel() {
         </div>
       `).join('')}
     </div>
-    <div class="phase-block">
-      <div class="phase-tag">What to expect</div>
-      <div class="phase-title">${expectTitle(S.selDays)}</div>
-      <div class="phase-copy">${expectCopy(S.selDays)}</div>
-    </div>
-    <button class="btn btn-primary" onclick="commitChal()">I am committing</button>
+    <button class="btn btn-primary" onclick="commitChal()">Commit to ${S.selDays} days</button>
   `;
 }
 
@@ -1209,7 +1203,6 @@ function expectTitle(d) {
   if (d <= 14) return 'Two weeks of determination';
   if (d <= 21) return 'Twenty-one days to a practice';
   if (d <= 28) return 'Twenty-eight days, then the compound kicks in';
-  if (d === 40) return 'Forty days. The psychiatrist was right.';
   if (d <= 35) return 'Five weeks, integration territory';
   return 'Forty-two days. Identity shift territory.';
 }
@@ -1219,8 +1212,8 @@ function expectCopy(d) {
   if (d <= 14) return 'Week one builds the habit. Week two is where most people quietly stop. You will not.';
   if (d <= 21) return 'Weeks one and two build the habit. Week three is when most people feel something shift.';
   if (d <= 28) return 'By week three it stops being effort. Week four is when you notice it in other parts of your life.';
-  if (d === 40) return 'Nothing feels different for the first three weeks. Around day 28 something shifts. Your body will know before your mind does.';
-  return 'Week four is usually when the shift happens. Everything after is compounding. Most people never get here.';
+  if (d <= 35) return 'Week four is when the shift usually happens. Everything after is compounding. Most people never get here.';
+  return 'Six weeks. The practice is no longer something you do. It is becoming something you are.';
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1393,14 +1386,15 @@ function showDone() {
   const done = c?.daysCompleted || 0;
   const phase = c ? getPhase(done) : null;
   const el = document.getElementById('done-body');
+  const actualMin = Math.max(1, Math.round(S.totalSecs / 60));
   el.innerHTML = `
     <div class="done-wrap">
       <div class="done-bell">&#128276;</div>
-      <div class="done-title">${S.duration} minutes.</div>
+      <div class="done-title">${actualMin} minutes.</div>
       <div class="done-sub">${doneMsg(done, c)}</div>
       <div class="done-stats">
         <div class="done-row"><span class="done-k">Session</span><span class="done-v">${S.sessionType.charAt(0).toUpperCase()+S.sessionType.slice(1)}</span></div>
-        <div class="done-row"><span class="done-k">Duration</span><span class="done-v">${S.duration} min</span></div>
+        <div class="done-row"><span class="done-k">Duration</span><span class="done-v">${actualMin} min</span></div>
         ${c ? `<div class="done-row"><span class="done-k">Challenge day</span><span class="done-v">${done} of ${c.days}</span></div>` : ''}
         ${phase ? `<div class="done-row"><span class="done-k">Phase</span><span class="done-v">${phase.label}</span></div>` : ''}
       </div>
@@ -1416,7 +1410,8 @@ function doneMsg(d, c) {
   if (d === 21) return 'Twenty-one days. This is a practice now.';
   if (d === 28) return 'Twenty-eight days. The compound is kicking in.';
   if (d === 35) return 'Thirty-five days. Integration territory.';
-  if (d >= 40)  return 'Forty days. The psychiatrist was right.';
+  if (d >= 42)  return 'Forty-two days. This is who you are now.';
+  if (d >= 40)  return 'Forty days. Most people never get here.';
   return `Day ${d} done. Keep going.`;
 }
 
