@@ -462,9 +462,27 @@ const PHASE_COPY = [
 const CHAL_OPTS = [7, 14, 21, 28, 35, 42];
 
 const BREATH_PATTERNS = {
-  '478':  { name: '4-7-8', inS: 4, holdS: 7, outS: 8, sub: 'Sleep & Anxiety', desc: 'Inhale through your nose for 4 counts, hold for 7, exhale slowly through your mouth for 8. The long exhale is what does the work. It quiets the nervous system quickly. Good for anxiety, stress, or winding down before sleep.' },
-  'box':  { name: 'Box',   inS: 4, holdS: 4, outS: 4, sub: 'Focus & Stress',  desc: 'Three equal counts: inhale 4, hold 4, exhale 4. Creates a steady, symmetrical rhythm that balances the nervous system without dropping alertness. Used in performance environments for stress regulation under pressure.' },
-  'calm': { name: '4-0-6', inS: 4, holdS: 0, outS: 6, sub: 'Gentle Reset',   desc: 'Inhale for 4, no hold, exhale slowly for 6. The extended exhale with no hold makes this the most accessible of the three. Good if you are new to breathwork, or want to slow down without any intensity.' },
+  '478': {
+    name: '4-7-8', inS: 4, holdS: 7, outS: 8, holdOutS: 0,
+    sub: 'Sleep & Anxiety',
+    steps: 'Nose in 4  —  Hold 7  —  Mouth out 8',
+    inst: { inhale: 'through your nose', hold: 'hold your breath', exhale: 'through your mouth, slow + audible', holdOut: '' },
+    desc: 'Inhale through your nose for 4. Hold for 7. Exhale completely through your mouth for 8 — slow and audible, like you are fogging a mirror. The ratio matters more than the speed. Most people feel the shift by the third cycle. Good for anxiety, stress, or before sleep.',
+  },
+  'box': {
+    name: 'Box', inS: 4, holdS: 4, outS: 4, holdOutS: 4,
+    sub: 'Focus & Stress',
+    steps: 'In 4  —  Hold 4  —  Out 4  —  Hold empty 4',
+    inst: { inhale: 'through your nose', hold: 'lungs full, stay still', exhale: 'slow and controlled', holdOut: 'lungs empty, stay still' },
+    desc: 'Four equal sides: inhale 4, hold 4, exhale 4, hold the empty lungs 4. That is one box. The fourth hold — after the exhale — is the part most people skip. Do not skip it. That is what makes it work for stress regulation under pressure.',
+  },
+  'calm': {
+    name: '4-0-6', inS: 4, holdS: 0, outS: 6, holdOutS: 0,
+    sub: 'Gentle Reset',
+    steps: 'Nose in 4  —  Out slow 6  (no holds)',
+    inst: { inhale: 'through your nose', hold: '', exhale: 'slow — full 6 counts', holdOut: '' },
+    desc: 'Inhale through your nose for 4. No hold. Exhale slowly for the full 6 counts. If you run out of air before 6, the exhale was too fast. The most accessible of the three. Good as a starting point, or when you want to come down without intensity.',
+  },
 };
 
 const DURATIONS = [5, 10, 15, 20, 30, 45];
@@ -813,33 +831,44 @@ function startBreathwork() {
   runBreathPhase();
 }
 
+function nextBreathPhase(pat) {
+  if (S.breathPhase === 'inhale')  return pat.holdS > 0 ? 'hold' : 'exhale';
+  if (S.breathPhase === 'hold')    return 'exhale';
+  if (S.breathPhase === 'exhale')  return pat.holdOutS > 0 ? 'holdOut' : 'inhale';
+  if (S.breathPhase === 'holdOut') return 'inhale';
+  return 'inhale';
+}
+
 function runBreathPhase() {
   clearInterval(S.breathTick);
   const pat = BREATH_PATTERNS[S.breathPat];
 
-  let dur;
-  if (S.breathPhase === 'inhale') dur = pat.inS;
-  else if (S.breathPhase === 'hold') dur = pat.holdS;
-  else dur = pat.outS;
+  const durMap = { inhale: pat.inS, hold: pat.holdS, exhale: pat.outS, holdOut: pat.holdOutS };
+  const dur = durMap[S.breathPhase] || 0;
 
-  // Skip zero-duration hold
+  // Skip zero-duration phases generically
   if (dur === 0) {
-    S.breathPhase = 'exhale';
+    S.breathPhase = nextBreathPhase(pat);
     runBreathPhase(); return;
   }
 
   S._breathEnd = Date.now() + dur * 1000;
 
-  // Animate orb
+  // Animate orb — expand on inhale/hold, contract on exhale/holdOut
   const orb = document.getElementById('breath-orb');
   if (orb) {
     orb.style.transition = `transform ${dur}s linear`;
-    const scale = S.breathPhase === 'inhale' ? 1 : S.breathPhase === 'hold' ? 1 : 0.5;
+    const scale = (S.breathPhase === 'inhale' || S.breathPhase === 'hold') ? 1 : 0.5;
     orb.style.transform = `translate(-50%,-50%) scale(${scale})`;
   }
 
+  const lblMap = { inhale: 'Inhale', hold: 'Hold', exhale: 'Exhale', holdOut: 'Hold empty' };
   const lbl = document.getElementById('breath-lbl');
-  if (lbl) lbl.textContent = S.breathPhase === 'inhale' ? 'Inhale' : S.breathPhase === 'hold' ? 'Hold' : 'Exhale';
+  if (lbl) lbl.textContent = lblMap[S.breathPhase] || S.breathPhase;
+
+  // Per-phase instruction text
+  const instEl = document.getElementById('breath-inst');
+  if (instEl) instEl.textContent = pat.inst[S.breathPhase] || '';
 
   S.breathTick = setInterval(() => {
     const left = Math.max(0, Math.round((S._breathEnd - Date.now()) / 1000));
@@ -854,16 +883,14 @@ function runBreathPhase() {
     if (left <= 0) {
       clearInterval(S.breathTick);
 
-      if (S.breathPhase === 'inhale') {
-        S.breathPhase = pat.holdS > 0 ? 'hold' : 'exhale';
-      } else if (S.breathPhase === 'hold') {
-        S.breathPhase = 'exhale';
-      } else {
-        S.breathPhase = 'inhale';
+      const next = nextBreathPhase(pat);
+      // Increment cycle count whenever a full cycle completes (returning to inhale)
+      if (next === 'inhale') {
         S.breathCycles++;
         const cy = document.getElementById('breath-cycles');
         if (cy) cy.textContent = `${S.breathCycles} cycle${S.breathCycles !== 1 ? 's' : ''}`;
       }
+      S.breathPhase = next;
 
       const tLeft = Math.max(0, Math.round((S.timerEnd - Date.now()) / 1000));
       if (tLeft <= 0) { finishSession(); return; }
@@ -928,6 +955,7 @@ function renderExploreHome(el) {
         `).join('')}
       </div>
       <div class="phase-block" style="margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:0.04em;margin-bottom:8px">${BREATH_PATTERNS[S.breathPat].steps}</div>
         <div class="phase-copy">${BREATH_PATTERNS[S.breathPat].desc}</div>
       </div>
     ` : ''}
@@ -1095,6 +1123,7 @@ function renderCfg() {
         `).join('')}
       </div>
       <div class="phase-block" style="margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:0.04em;margin-bottom:8px">${BREATH_PATTERNS[S.breathPat].steps}</div>
         <div class="phase-copy">${BREATH_PATTERNS[S.breathPat].desc}</div>
       </div>
     ` : ''}
@@ -1186,11 +1215,13 @@ function renderBreathView() {
   const el = document.getElementById('timer-body');
   el.innerHTML = `
     <div class="breath-display">
+      <div style="font-size:12px;color:var(--text3);text-align:center;letter-spacing:0.04em;margin-bottom:20px;line-height:1.6">${pat.steps}</div>
       <div class="orb-wrap">
         <div class="orb" id="breath-orb"></div>
       </div>
       <div class="breath-phase-lbl" id="breath-lbl">Inhale</div>
       <div class="breath-phase-t" id="breath-t">${pat.inS}</div>
+      <div id="breath-inst" style="font-size:13px;color:var(--text3);text-align:center;margin-top:5px;min-height:18px">${pat.inst.inhale}</div>
       <div class="breath-cycles" id="breath-cycles">0 cycles</div>
       <div class="breath-total" id="breath-total">${fmtTime(S.totalSecs)} remaining</div>
       <div style="height:24px"></div>
