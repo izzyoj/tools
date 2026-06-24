@@ -492,6 +492,7 @@ const PHASE_COPY = [
 ];
 
 const CHAL_OPTS = [7, 14, 21, 28, 35, 42];
+const APP_URL   = 'https://izzyoj.github.io/tools/meditation-timer.html';
 
 const MANTRAS = [
   // You are — self-worth
@@ -1378,6 +1379,103 @@ function renderBreathView() {
 }
 
 /* ═══════════════════════════════════════════════════════
+   SHARE
+═══════════════════════════════════════════════════════ */
+function drawShareCard(opts) {
+  const { type, duration, challengeDay, challengeTotal } = opts;
+  const W = 1080, H = 1080;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  // Background gradient
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#071524');
+  bg.addColorStop(0.45, '#0A1E36');
+  bg.addColorStop(1, '#061320');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  // Teal glow from top
+  const glow = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, 680);
+  glow.addColorStop(0, 'rgba(77,200,192,0.14)');
+  glow.addColorStop(1, 'rgba(77,200,192,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+
+  // Session emoji
+  ctx.font = '100px serif';
+  ctx.textAlign = 'center';
+  const ICONS = { silent: '🔇', mantra: '🧘', breathwork: '💨' };
+  ctx.fillText(ICONS[type] || '🧘', W/2, 290);
+
+  // Session type label
+  ctx.fillStyle = 'rgba(255,255,255,0.50)';
+  ctx.font = '48px system-ui, -apple-system, sans-serif';
+  const typeLabel = (type || 'meditation').charAt(0).toUpperCase() + (type || 'meditation').slice(1) + ' meditation';
+  ctx.fillText(typeLabel, W/2, 385);
+
+  // Duration — big teal
+  ctx.fillStyle = '#4DC8C0';
+  ctx.font = 'bold 210px system-ui, -apple-system, sans-serif';
+  ctx.fillText(`${duration}m`, W/2, 610);
+
+  // Challenge progress
+  if (challengeDay && challengeTotal) {
+    ctx.fillStyle = 'rgba(255,255,255,0.38)';
+    ctx.font = '44px system-ui, -apple-system, sans-serif';
+    ctx.fillText(`Day ${challengeDay} of ${challengeTotal}`, W/2, 700);
+  }
+
+  // Divider
+  ctx.strokeStyle = 'rgba(77,200,192,0.22)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(180, 800); ctx.lineTo(W - 180, 800); ctx.stroke();
+
+  // URL
+  ctx.fillStyle = 'rgba(77,200,192,0.50)';
+  ctx.font = '30px system-ui, -apple-system, sans-serif';
+  ctx.fillText('izzyoj.github.io/tools/meditation-timer.html', W/2, 858);
+
+  return cv;
+}
+
+async function shareSessionCard() {
+  const c = getChallenge();
+  const done = c?.daysCompleted || 0;
+  const actualMin = Math.max(1, Math.round(S.totalSecs / 60));
+  const cv = drawShareCard({
+    type: S.sessionType, duration: actualMin,
+    challengeDay: c ? done : null, challengeTotal: c ? c.days : null,
+  });
+  const typeLabel = S.sessionType.charAt(0).toUpperCase() + S.sessionType.slice(1);
+  const text = `${actualMin} minute ${typeLabel} meditation done.${c ? ` Day ${done} of ${c.days}.` : ''}`;
+  try {
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    const file = new File([blob], 'meditation-session.png', { type: 'image/png' });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ title: 'Meditation session', text, url: APP_URL, files: [file] });
+    } else if (navigator.share) {
+      await navigator.share({ title: 'Meditation session', text, url: APP_URL });
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'meditation-session.png'; a.click();
+    }
+  } catch(e) { if (e.name !== 'AbortError') console.warn('Share failed:', e); }
+}
+
+async function shareStats() {
+  const h = getHistory();
+  const total = h.reduce((a, s) => a + (s.duration || 0), 0);
+  const text = `${h.length} meditation session${h.length !== 1 ? 's' : ''} done. ${total} minutes total.`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: 'My meditation practice', text, url: APP_URL });
+    } else {
+      await navigator.clipboard?.writeText(`${text} ${APP_URL}`);
+    }
+  } catch(e) { if (e.name !== 'AbortError') console.warn('Share failed:', e); }
+}
+
+/* ═══════════════════════════════════════════════════════
    DONE
 ═══════════════════════════════════════════════════════ */
 function showDone() {
@@ -1399,6 +1497,7 @@ function showDone() {
         ${phase ? `<div class="done-row"><span class="done-k">Phase</span><span class="done-v">${phase.label}</span></div>` : ''}
       </div>
       <button class="btn btn-primary" onclick="showView('home')">Done</button>
+      <button onclick="shareSessionCard()" class="btn btn-ghost" style="margin-top:8px">📤 Share session</button>
     </div>`;
 }
 
@@ -1439,7 +1538,7 @@ function renderHistory() {
   }
   const totalMin = h.reduce((a,s) => a + (s.duration||0), 0);
   el.innerHTML = `
-    <div style="display:flex;gap:10px;margin-bottom:24px">
+    <div style="display:flex;gap:10px;margin-bottom:16px">
       <div class="phase-block" style="flex:1;text-align:center;margin-bottom:0;padding:14px 8px">
         <div style="font-size:24px;font-weight:800;color:var(--accent)">${h.length}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px">sessions</div>
@@ -1449,6 +1548,7 @@ function renderHistory() {
         <div style="font-size:11px;color:var(--text3);margin-top:2px">minutes</div>
       </div>
     </div>
+    <button onclick="shareStats()" class="btn btn-ghost" style="margin-bottom:20px;font-size:14px">📤 Share your practice</button>
     <div class="phase-block" style="padding:4px 16px;margin-bottom:24px">
       ${h.slice(0,50).map(s => `
         <div class="done-row" style="padding:13px 0;align-items:center">
