@@ -887,7 +887,6 @@ function showView(name) {
    HOME
 ═══════════════════════════════════════════════════════ */
 function renderHome() {
-  loadCfg();
   const c = getChallenge();
   const el = document.getElementById('home-body');
   if (c) {
@@ -903,13 +902,47 @@ function renderExploreHome(el) {
   const e = getExplore();
   const n = e.count || 0;
   el.innerHTML = `
-    <div class="hero">
-      <div class="hero-title">Show up.<br><em>Every day.</em></div>
-      <div class="hero-sub">System, not willpower.</div>
+    ${n > 0 ? `<div class="notice info" style="margin-bottom:20px"><strong>${n} session${n!==1?'s':''}</strong> done. Ready to commit?</div>` : '<div style="height:12px"></div>'}
+
+    <div class="type-tabs">
+      ${[['silent','🔇','Silent'],['mantra','🧘','Mantra'],['breathwork','💨','Breathwork']].map(([id,ic,lb]) => `
+        <div class="type-tab ${S.sessionType===id?'on':''}" onclick="S.sessionType='${id}';saveCfg();renderHome()">
+          <div class="tab-icon">${ic}</div>
+          <div class="tab-lbl">${lb}</div>
+        </div>
+      `).join('')}
     </div>
-    ${n > 0 ? `<div class="notice info"><strong>${n} session${n!==1?'s':''}</strong> done so far. Ready to commit?</div>` : ''}
-    <button class="btn btn-primary" onclick="showView('config')">Start a Session</button>
-    <button class="btn btn-ghost" onclick="showView('challenge')">Start a Challenge</button>
+
+    ${S.sessionType === 'mantra' ? `
+      <input class="m-input" id="m-inp" value="${esc(S.mantraText)}" placeholder="I am enough..." maxlength="80" oninput="S.mantraText=this.value;saveCfg()">
+    ` : ''}
+
+    ${S.sessionType === 'breathwork' ? `
+      <div class="pick-grid cols3" style="margin-bottom:24px">
+        ${Object.entries(BREATH_PATTERNS).map(([k,p]) => `
+          <div class="pick-btn ${S.breathPat===k?'on':''}" onclick="S.breathPat='${k}';saveCfg();renderHome()">
+            <span style="font-weight:700">${p.name}</span>
+            <span class="p-sub">${p.sub}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+
+    <div class="pick-grid cols4">
+      ${DURATIONS.map(d => `<div class="pick-btn ${S.duration===d?'on':''}" onclick="S.duration=${d};saveCfg();renderHome()">${d}m</div>`).join('')}
+    </div>
+
+    <div class="pick-grid cols3" style="margin-top:-8px">
+      ${[['off','No sound'],['brown','Brown Noise'],['pink','Pink Noise']].map(([k,lb]) => `
+        <div class="pick-btn ${S.ambient===k?'on':''}" onclick="S.ambient='${k}';saveCfg();renderHome()">${lb}</div>
+      `).join('')}
+    </div>
+
+    <button class="btn btn-primary" style="margin-top:28px" onclick="beginSession()">Begin</button>
+
+    <div style="text-align:center;margin-top:28px">
+      <span style="color:var(--text3);font-size:14px">Building a habit? </span><button onclick="showView('challenge')" style="background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;font-family:var(--font);padding:0">Start a challenge &#8594;</button>
+    </div>
   `;
 }
 
