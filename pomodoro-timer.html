@@ -1065,9 +1065,8 @@ const SFX = {
   shortBreak:() => tone(440, 0.6, 'sine', 0.15, 0.82),
   longBreak: () => { tone(330, 1.6, 'sine', 0.14, 0.94); toneAt(277, 1.2, 90, 'sine', 0.07); },
   finish:    () => { [523,659,784,1047].forEach((f,i)=>toneAt(f,0.45,i*190,'sine',0.22)); },
-  tick:        () => tone(660, 0.06, 'sine', 0.09),
-  beep1:       () => tone(1047, 0.10, 'sine', 0.22),
-  minuteMark:  () => { tone(880, 0.055, 'sine', 0.13); toneAt(880, 0.055, 110, 'sine', 0.13); },
+  tick:      () => tone(660, 0.06, 'sine', 0.09),
+  beep1:     () => tone(1047, 0.10, 'sine', 0.22),
 };
 
 function speak(text) {
@@ -1100,7 +1099,6 @@ let totalRoundsThisSession = 0; // counter used for header display
 let inBreak = false;            // true when in short or long break
 let tick = null, lastTick = 0;
 let lastCountdownSec = -1;
-let lastMinuteMark = -1;
 let wl = null;
 
 /* Build sequence dynamically: returns next phase given current state */
@@ -1139,7 +1137,6 @@ function startSession() {
 function goPhase(ph) {
   phase = ph;
   lastCountdownSec = -1;
-  lastMinuteMark = -1;
   inBreak = (ph === 'shortBreak' || ph === 'longBreak');
 
   const dur = ph === 'countdown' ? cfg.countdown
@@ -1220,15 +1217,6 @@ function startTick() {
     lastTick = now;
     phaseRem -= dt;
     sessElapsed = (now-sessStart)/1000;
-
-    // minute marker during work phase (double-tap every completed minute)
-    if (phase==='work' && cfg.audio!=='silence') {
-      const elapsedMin = Math.floor(phaseTotal - phaseRem) / 60 | 0;
-      if (elapsedMin > 0 && elapsedMin !== lastMinuteMark) {
-        lastMinuteMark = elapsedMin;
-        SFX.minuteMark();
-      }
-    }
 
     // 10s countdown ticks
     const remSec = Math.ceil(phaseRem);
