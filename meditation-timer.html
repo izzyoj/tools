@@ -464,6 +464,7 @@ const CHAL_OPTS = [7, 14, 21, 28, 35, 42];
 const BREATH_PATTERNS = {
   '478': {
     name: '4-7-8', inS: 4, holdS: 7, outS: 8, holdOutS: 0,
+    cycleOpts: [4, 6, 8, 12], defaultCycles: 4,
     sub: 'Sleep & Anxiety',
     steps: 'Nose in 4  —  Hold 7  —  Mouth out 8',
     inst: { inhale: 'through your nose', hold: 'hold your breath', exhale: 'through your mouth, slow + audible', holdOut: '' },
@@ -471,6 +472,7 @@ const BREATH_PATTERNS = {
   },
   'box': {
     name: 'Box', inS: 4, holdS: 4, outS: 4, holdOutS: 4,
+    cycleOpts: [5, 10, 15, 20], defaultCycles: 10,
     sub: 'Focus & Stress',
     steps: 'In 4  —  Hold 4  —  Out 4  —  Hold empty 4',
     inst: { inhale: 'through your nose', hold: 'lungs full, stay still', exhale: 'slow and controlled', holdOut: 'lungs empty, stay still' },
@@ -478,6 +480,7 @@ const BREATH_PATTERNS = {
   },
   'calm': {
     name: '4-0-6', inS: 4, holdS: 0, outS: 6, holdOutS: 0,
+    cycleOpts: [10, 20, 30, 50], defaultCycles: 20,
     sub: 'Gentle Reset',
     steps: 'Nose in 4  —  Out slow 6  (no holds)',
     inst: { inhale: 'through your nose', hold: '', exhale: 'slow — full 6 counts', holdOut: '' },
@@ -514,6 +517,7 @@ const S = {
   // challenge select
   selDays:       21,
   selTime:       'flexible',
+  targetCycles:  4,
 };
 
 /* ═══════════════════════════════════════════════════════
@@ -540,6 +544,7 @@ function loadCfg() {
   S.intervalMin   = c.intervalMin   ?? S.intervalMin;
   S.mantraText    = c.mantraText    ?? S.mantraText;
   S.breathPat     = c.breathPat     ?? S.breathPat;
+  S.targetCycles  = c.targetCycles  ?? S.targetCycles;
 }
 
 function saveCfg() {
@@ -548,6 +553,7 @@ function saveCfg() {
     ambient: S.ambient, ambientVol: S.ambientVol,
     intervalBells: S.intervalBells, intervalMin: S.intervalMin,
     mantraText: S.mantraText, breathPat: S.breathPat,
+    targetCycles: S.targetCycles,
   });
 }
 
@@ -738,10 +744,26 @@ function startChallenge(days, time) {
 /* ═══════════════════════════════════════════════════════
    TIMER ENGINE
 ═══════════════════════════════════════════════════════ */
+function cycleDur(pat) {
+  return pat.inS + (pat.holdS || 0) + pat.outS + (pat.holdOutS || 0);
+}
+
+function fmtApprox(cycles, patKey) {
+  const secs = cycles * cycleDur(BREATH_PATTERNS[patKey]);
+  const m = Math.floor(secs / 60), s = secs % 60;
+  return m > 0 && s > 0 ? `${m}m ${s}s` : m > 0 ? `${m}m` : `${s}s`;
+}
+
 function beginSession() {
   saveCfg();
-  S.totalSecs = S.duration * 60;
-  S.timerEnd  = Date.now() + S.totalSecs * 1000;
+  if (S.sessionType === 'breathwork') {
+    const pat = BREATH_PATTERNS[S.breathPat];
+    const tc = S.targetCycles || pat.defaultCycles;
+    S.totalSecs = tc * cycleDur(pat);
+  } else {
+    S.totalSecs = S.duration * 60;
+  }
+  S.timerEnd = Date.now() + S.totalSecs * 1000;
   clearTimers();
 
   // Wake lock
@@ -875,11 +897,6 @@ function runBreathPhase() {
     const el = document.getElementById('breath-t');
     if (el) el.textContent = left;
 
-    // Update total remaining
-    const totalLeft = Math.max(0, Math.round((S.timerEnd - Date.now()) / 1000));
-    const tot = document.getElementById('breath-total');
-    if (tot) tot.textContent = `${fmtTime(totalLeft)} remaining`;
-
     if (left <= 0) {
       clearInterval(S.breathTick);
 
@@ -888,7 +905,8 @@ function runBreathPhase() {
       if (next === 'inhale') {
         S.breathCycles++;
         const cy = document.getElementById('breath-cycles');
-        if (cy) cy.textContent = `${S.breathCycles} cycle${S.breathCycles !== 1 ? 's' : ''}`;
+        if (cy) cy.textContent = `${S.breathCycles} / ${S.targetCycles} cycle${S.targetCycles !== 1 ? 's' : ''}`;
+        if (S.breathCycles >= S.targetCycles) { finishSession(); return; }
       }
       S.breathPhase = next;
 
@@ -948,7 +966,7 @@ function renderExploreHome(el) {
     ${S.sessionType === 'breathwork' ? `
       <div class="pick-grid cols3" style="margin-bottom:12px">
         ${Object.entries(BREATH_PATTERNS).map(([k,p]) => `
-          <div class="pick-btn ${S.breathPat===k?'on':''}" onclick="S.breathPat='${k}';saveCfg();renderHome()">
+          <div class="pick-btn ${S.breathPat===k?'on':''}" onclick="S.breathPat='${k}';S.targetCycles=BREATH_PATTERNS['${k}'].defaultCycles;saveCfg();renderHome()">
             <span style="font-weight:700">${p.name}</span>
             <span class="p-sub">${p.sub}</span>
           </div>
@@ -960,9 +978,21 @@ function renderExploreHome(el) {
       </div>
     ` : ''}
 
-    <div class="pick-grid cols4">
-      ${DURATIONS.map(d => `<div class="pick-btn ${S.duration===d?'on':''}" onclick="S.duration=${d};saveCfg();renderHome()">${d}m</div>`).join('')}
-    </div>
+    ${S.sessionType === 'breathwork' ? `
+      <p class="lbl">Cycles</p>
+      <div class="pick-grid cols4">
+        ${BREATH_PATTERNS[S.breathPat].cycleOpts.map(c => `
+          <div class="pick-btn ${S.targetCycles===c?'on':''}" onclick="S.targetCycles=${c};saveCfg();renderHome()">
+            <span style="font-size:15px;font-weight:700">${c}</span>
+            <span class="p-sub">~${fmtApprox(c, S.breathPat)}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : `
+      <div class="pick-grid cols4">
+        ${DURATIONS.map(d => `<div class="pick-btn ${S.duration===d?'on':''}" onclick="S.duration=${d};saveCfg();renderHome()">${d}m</div>`).join('')}
+      </div>
+    `}
 
     <div class="pick-grid cols3" style="margin-top:-8px">
       ${[['off','No Sound',''],['brown','Deep','low hum'],['pink','Rain','soft noise']].map(([k,lb,sub]) => `
@@ -1101,9 +1131,17 @@ function renderCfg() {
       `).join('')}
     </div>
 
-    <p class="lbl">Duration</p>
+    <p class="lbl">${S.sessionType === 'breathwork' ? 'Cycles' : 'Duration'}</p>
     <div class="pick-grid cols4">
-      ${DURATIONS.map(d => `<div class="pick-btn ${S.duration===d?'on':''}" onclick="setDur(${d})">${d}m</div>`).join('')}
+      ${S.sessionType === 'breathwork'
+        ? BREATH_PATTERNS[S.breathPat].cycleOpts.map(c => `
+            <div class="pick-btn ${S.targetCycles===c?'on':''}" onclick="S.targetCycles=${c};renderCfg()">
+              <span style="font-size:15px;font-weight:700">${c}</span>
+              <span class="p-sub">~${fmtApprox(c, S.breathPat)}</span>
+            </div>
+          `).join('')
+        : DURATIONS.map(d => `<div class="pick-btn ${S.duration===d?'on':''}" onclick="setDur(${d})">${d}m</div>`).join('')
+      }
     </div>
 
     ${S.sessionType === 'mantra' ? `
@@ -1161,7 +1199,7 @@ function renderCfg() {
 function setType(t) { S.sessionType = t; renderCfg(); }
 function setDur(d)  { S.duration = d;    renderCfg(); }
 function setAmb(a)  { S.ambient = a;     renderCfg(); }
-function setBreath(b){ S.breathPat = b;  renderCfg(); }
+function setBreath(b){ S.breathPat = b; S.targetCycles = BREATH_PATTERNS[b].defaultCycles; renderCfg(); }
 
 /* ═══════════════════════════════════════════════════════
    TIMER RENDERS
@@ -1222,8 +1260,7 @@ function renderBreathView() {
       <div class="breath-phase-lbl" id="breath-lbl">Inhale</div>
       <div class="breath-phase-t" id="breath-t">${pat.inS}</div>
       <div id="breath-inst" style="font-size:13px;color:var(--text3);text-align:center;margin-top:5px;min-height:18px">${pat.inst.inhale}</div>
-      <div class="breath-cycles" id="breath-cycles">0 cycles</div>
-      <div class="breath-total" id="breath-total">${fmtTime(S.totalSecs)} remaining</div>
+      <div class="breath-cycles" id="breath-cycles">0 / ${S.targetCycles} cycle${S.targetCycles !== 1 ? 's' : ''}</div>
       <div style="height:24px"></div>
       ${buildAmbBar()}
       <button class="end-btn" onclick="confirmEnd()" style="margin-top:8px">End Session</button>
