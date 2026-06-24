@@ -462,9 +462,9 @@ const PHASE_COPY = [
 const CHAL_OPTS = [7, 14, 21, 28, 35, 42];
 
 const BREATH_PATTERNS = {
-  '478':  { name: '4-7-8',  inS: 4, holdS: 7, outS: 8,  sub: 'Relaxation' },
-  'box':  { name: 'Box',    inS: 4, holdS: 4, outS: 4,  sub: 'Balance' },
-  'calm': { name: '4-0-6',  inS: 4, holdS: 0, outS: 6,  sub: 'Calming' },
+  '478':  { name: '4-7-8', inS: 4, holdS: 7, outS: 8, sub: 'Sleep & Anxiety', desc: 'Inhale through your nose for 4 counts, hold for 7, exhale slowly through your mouth for 8. The long exhale is what does the work. It quiets the nervous system quickly. Good for anxiety, stress, or winding down before sleep.' },
+  'box':  { name: 'Box',   inS: 4, holdS: 4, outS: 4, sub: 'Focus & Stress',  desc: 'Three equal counts: inhale 4, hold 4, exhale 4. Creates a steady, symmetrical rhythm that balances the nervous system without dropping alertness. Used in performance environments for stress regulation under pressure.' },
+  'calm': { name: '4-0-6', inS: 4, holdS: 0, outS: 6, sub: 'Gentle Reset',   desc: 'Inhale for 4, no hold, exhale slowly for 6. The extended exhale with no hold makes this the most accessible of the three. Good if you are new to breathwork, or want to slow down without any intensity.' },
 };
 
 const DURATIONS = [5, 10, 15, 20, 30, 45];
@@ -637,7 +637,7 @@ function toggleAmbientLive() {
 
 function buildAmbBar() {
   if (S.ambient === 'off' || !S.ambNode) return '<div id="amb-bar"></div>';
-  const name = S.ambient === 'brown' ? 'Brown Noise' : 'Pink Noise';
+  const name = S.ambient === 'brown' ? 'Deep' : 'Rain';
   return `<div class="amb-bar" id="amb-bar">
     <div class="amb-dot-live"></div>
     <span class="amb-name-live">${name}</span>
@@ -914,17 +914,21 @@ function renderExploreHome(el) {
     </div>
 
     ${S.sessionType === 'mantra' ? `
-      <input class="m-input" id="m-inp" value="${esc(S.mantraText)}" placeholder="I am enough..." maxlength="80" oninput="S.mantraText=this.value;saveCfg()">
+      <input class="m-input" id="m-inp" value="${esc(S.mantraText)}" placeholder="I am enough. I have always been enough." maxlength="80" oninput="S.mantraText=this.value;saveCfg()">
+      <p style="font-size:13px;color:var(--text3);margin-top:-16px;margin-bottom:24px;text-align:center;line-height:1.5">Close your eyes and repeat this silently to yourself for the full ${S.duration} minutes.</p>
     ` : ''}
 
     ${S.sessionType === 'breathwork' ? `
-      <div class="pick-grid cols3" style="margin-bottom:24px">
+      <div class="pick-grid cols3" style="margin-bottom:12px">
         ${Object.entries(BREATH_PATTERNS).map(([k,p]) => `
           <div class="pick-btn ${S.breathPat===k?'on':''}" onclick="S.breathPat='${k}';saveCfg();renderHome()">
             <span style="font-weight:700">${p.name}</span>
             <span class="p-sub">${p.sub}</span>
           </div>
         `).join('')}
+      </div>
+      <div class="phase-block" style="margin-bottom:24px">
+        <div class="phase-copy">${BREATH_PATTERNS[S.breathPat].desc}</div>
       </div>
     ` : ''}
 
@@ -933,8 +937,10 @@ function renderExploreHome(el) {
     </div>
 
     <div class="pick-grid cols3" style="margin-top:-8px">
-      ${[['off','No sound'],['brown','Brown Noise'],['pink','Pink Noise']].map(([k,lb]) => `
-        <div class="pick-btn ${S.ambient===k?'on':''}" onclick="S.ambient='${k}';saveCfg();renderHome()">${lb}</div>
+      ${[['off','No Sound',''],['brown','Deep','low hum'],['pink','Rain','soft noise']].map(([k,lb,sub]) => `
+        <div class="pick-btn ${S.ambient===k?'on':''}" onclick="S.ambient='${k}';saveCfg();renderHome()">
+          ${lb}${sub ? `<span class="p-sub">${sub}</span>` : ''}
+        </div>
       `).join('')}
     </div>
 
@@ -1074,12 +1080,13 @@ function renderCfg() {
 
     ${S.sessionType === 'mantra' ? `
       <p class="lbl">Your Mantra</p>
-      <input class="m-input" id="m-inp" value="${esc(S.mantraText)}" placeholder="I am enough..." maxlength="80" oninput="S.mantraText=this.value">
+      <input class="m-input" id="m-inp" value="${esc(S.mantraText)}" placeholder="I am enough. I have always been enough." maxlength="80" oninput="S.mantraText=this.value">
+      <p style="font-size:13px;color:var(--text3);margin-top:-16px;margin-bottom:24px;text-align:center;line-height:1.5">Close your eyes and repeat this silently for the full ${S.duration} minutes.</p>
     ` : ''}
 
     ${S.sessionType === 'breathwork' ? `
       <p class="lbl">Pattern</p>
-      <div class="pick-grid cols3" style="margin-bottom:24px">
+      <div class="pick-grid cols3" style="margin-bottom:12px">
         ${Object.entries(BREATH_PATTERNS).map(([k,p]) => `
           <div class="pick-btn ${S.breathPat===k?'on':''}" onclick="setBreath('${k}')">
             <span style="font-weight:700">${p.name}</span>
@@ -1087,12 +1094,17 @@ function renderCfg() {
           </div>
         `).join('')}
       </div>
+      <div class="phase-block" style="margin-bottom:24px">
+        <div class="phase-copy">${BREATH_PATTERNS[S.breathPat].desc}</div>
+      </div>
     ` : ''}
 
     <p class="lbl">Ambient Sound</p>
     <div class="pick-grid cols3" style="margin-bottom:${S.ambient!=='off'?'12px':'24px'}">
-      ${[['off','Off'],['brown','Brown Noise'],['pink','Pink Noise']].map(([k,lb]) => `
-        <div class="pick-btn ${S.ambient===k?'on':''}" onclick="setAmb('${k}')">${lb}</div>
+      ${[['off','No Sound',''],['brown','Deep','low hum'],['pink','Rain','soft noise']].map(([k,lb,sub]) => `
+        <div class="pick-btn ${S.ambient===k?'on':''}" onclick="setAmb('${k}')">
+          ${lb}${sub ? `<span class="p-sub">${sub}</span>` : ''}
+        </div>
       `).join('')}
     </div>
     ${S.ambient !== 'off' ? `
