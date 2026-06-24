@@ -481,11 +481,11 @@ const MANTRAS = [
   'You are capable of what you have not yet attempted.',
   'You are the author now.',
   // Minimalist / received
-  'So hum.',
-  'Sat nam.',
+  'So hum. (I am that.)',
+  'Sat nam. (Truth is my identity.)',
   'Let go.',
   'Be here.',
-  'Return.',
+  'Peace.',
 ];
 
 const BREATH_PATTERNS = {
@@ -1274,9 +1274,11 @@ function renderTimerView() {
   const time = fmtTime(S.totalSecs);
 
   if (S.sessionType === 'mantra') {
+    const mLen = S.mantraText.length;
+    const mSize = mLen > 38 ? '17px' : mLen > 22 ? '21px' : '28px';
     el.innerHTML = `
       <div class="mantra-display">
-        <div class="mantra-text">${esc(S.mantraText)}</div>
+        <div class="mantra-text" style="font-size:${mSize}">${esc(S.mantraText)}</div>
         <div class="mantra-clock" id="ring-time">${time}</div>
         <div style="height:28px"></div>
         ${buildAmbBar()}
@@ -1295,9 +1297,9 @@ function renderTimerView() {
           <div class="ring-inner">
             <div class="ring-time" id="ring-time">${time}</div>
             <div class="ring-sub">remaining</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center;line-height:1.5;letter-spacing:0.02em">Return to<br>the breath</div>
           </div>
         </div>
-        <p style="font-size:13px;color:var(--text3);text-align:center;margin-bottom:16px">When the mind wanders, return to the breath.</p>
         ${buildAmbBar()}
         <button class="end-btn" onclick="confirmEnd()">End Session</button>
       </div>`;
