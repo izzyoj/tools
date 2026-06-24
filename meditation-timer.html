@@ -430,9 +430,18 @@ body::before {
 <div class="view active" id="view-home">
   <div class="hdr">
     <span class="hdr-title">Meditation</span>
-    <button class="btn-back" onclick="showHistory()" style="font-size:19px;line-height:1">&#9776;</button>
+    <button class="btn-back" onclick="showHistory()" style="font-size:13px;font-weight:600;color:var(--text2)">Sessions</button>
   </div>
   <div id="home-body"></div>
+</div>
+
+<!-- ══════════════ HISTORY ════════════════════════════════ -->
+<div class="view" id="view-history">
+  <div class="hdr">
+    <span class="hdr-title">Sessions</span>
+    <button class="btn-back" onclick="showView('home')">Back</button>
+  </div>
+  <div id="history-body"></div>
 </div>
 
 <!-- ══════════════ CHALLENGE SELECT ═════════════════════ -->
@@ -686,14 +695,9 @@ function makeNoiseBuf(ctx, type) {
       d[i] = last * 3.5;
     }
   } else {
-    let b = [0,0,0,0,0,0,0];
+    // White noise — crisp high-frequency texture, sounds like rain
     for (let i = 0; i < len; i++) {
-      const w = Math.random() * 2 - 1;
-      b[0]=0.99886*b[0]+w*0.0555179; b[1]=0.99332*b[1]+w*0.0750759;
-      b[2]=0.96900*b[2]+w*0.1538520; b[3]=0.86650*b[3]+w*0.3104856;
-      b[4]=0.55000*b[4]+w*0.5329522; b[5]=-0.7616*b[5]-w*0.0168980;
-      d[i]=(b[0]+b[1]+b[2]+b[3]+b[4]+b[5]+b[6]+w*0.5362)*0.11;
-      b[6]=w*0.115926;
+      d[i] = (Math.random() * 2 - 1) * 0.28;
     }
   }
   return buf;
@@ -887,9 +891,9 @@ function finishSession() {
   playBell('closing');
   setTimeout(() => playBell('closing'), 2800);
 
-  // Record history
+  // Record history (use actual elapsed time so breathwork shows correct duration)
   const h = getHistory();
-  h.unshift({ date: todayStr(), type: S.sessionType, duration: S.duration, ts: Date.now() });
+  h.unshift({ date: todayStr(), type: S.sessionType, duration: Math.max(1, Math.round(S.totalSecs / 60)), ts: Date.now() });
   if (h.length > 100) h.length = 100;
   setHistory(h);
 
@@ -911,7 +915,17 @@ function confirmEnd() {
   if (confirm('End this session early?')) {
     clearTimers();
     stopAmbient();
+    // Record partial session if at least 30s elapsed
+    const elapsedSecs = S.totalSecs - Math.max(0, (S.timerEnd - Date.now()) / 1000);
+    if (elapsedSecs >= 30) {
+      const h = getHistory();
+      const elapsedMin = Math.max(1, Math.round(elapsedSecs / 60));
+      h.unshift({ date: todayStr(), type: S.sessionType, duration: elapsedMin, ts: Date.now(), partial: true });
+      if (h.length > 100) h.length = 100;
+      setHistory(h);
+    }
     showView('home');
+    renderHome();
   }
 }
 
@@ -1407,13 +1421,54 @@ function doneMsg(d, c) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   HISTORY (simple)
+   HISTORY
 ═══════════════════════════════════════════════════════ */
 function showHistory() {
+  renderHistory();
+  showView('history');
+}
+
+function renderHistory() {
   const h = getHistory();
-  if (!h.length) { alert('No sessions recorded yet.'); return; }
-  const lines = h.slice(0,12).map(s => `${s.date}  ${s.type}  ${s.duration}min`).join('\n');
-  alert(`Recent sessions:\n\n${lines}`);
+  const el = document.getElementById('history-body');
+  const TYPE_ICON = { silent: '🔇', mantra: '🧘', breathwork: '💨' };
+  const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+  if (!h.length) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:64px 0 32px;color:var(--text3)">
+        <div style="font-size:40px;margin-bottom:12px">🧘</div>
+        <div style="font-size:15px">No sessions yet.</div>
+        <div style="font-size:13px;margin-top:6px;color:var(--text3)">Complete or end a session early to see it here.</div>
+      </div>`;
+    return;
+  }
+  const totalMin = h.reduce((a,s) => a + (s.duration||0), 0);
+  el.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:24px">
+      <div class="phase-block" style="flex:1;text-align:center;margin-bottom:0;padding:14px 8px">
+        <div style="font-size:24px;font-weight:800;color:var(--accent)">${h.length}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">sessions</div>
+      </div>
+      <div class="phase-block" style="flex:1;text-align:center;margin-bottom:0;padding:14px 8px">
+        <div style="font-size:24px;font-weight:800;color:var(--accent)">${totalMin}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">minutes</div>
+      </div>
+    </div>
+    <div class="phase-block" style="padding:4px 16px;margin-bottom:24px">
+      ${h.slice(0,50).map(s => `
+        <div class="done-row" style="padding:13px 0;align-items:center">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:20px">${TYPE_ICON[s.type] || '🧘'}</span>
+            <div>
+              <div style="font-size:14px;font-weight:600">${cap(s.type)}${s.partial ? `&nbsp;<span style="font-size:11px;color:var(--text3);font-weight:400">partial</span>` : ''}</div>
+              <div style="font-size:12px;color:var(--text3)">${s.date}</div>
+            </div>
+          </div>
+          <div style="font-size:14px;color:var(--text2);font-weight:600">${s.duration}m</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 /* ═══════════════════════════════════════════════════════
