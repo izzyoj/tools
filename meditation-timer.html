@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meditation Timer</title>
+<style>
+/* ── Variables ─────────────────────────────────────────── */
+:root {
+  --bg:       #0D0B1A;
+  --surface:  #1A1630;
+  --surface2: #231E42;
+  --border:   #2D2850;
+  --text:     #F0EEF8;
+  --text2:    #9B96C0;
+  --text3:    #5C5880;
+  --accent:   #7B6FE8;
+  --accent-d: rgba(123,111,232,0.18);
+  --accent-g: rgba(123,111,232,0.35);
+  --gap-dot:  #3A3560;
+  --r:        12px;
+  --r-sm:     8px;
+  --font:     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+}
+
+/* ── Reset ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── App shell ─────────────────────────────────────────── */
+.app {
+  max-width: 420px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 0 20px 48px;
+  display: flex;
+  flex-direction: column;
+}
+.view { display: none; flex-direction: column; flex: 1; }
+.view.active { display: flex; }
+
+/* ── Header ────────────────────────────────────────────── */
+.hdr {
+  padding: 20px 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.hdr-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.btn-back {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: var(--font);
+  transition: color 0.15s;
+}
+.btn-back:active { color: var(--accent); }
+
+/* ── Hero ──────────────────────────────────────────────── */
+.hero { margin: 20px 0 8px; }
+.hero-title {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+.hero-title em { color: var(--accent); font-style: normal; }
+.hero-sub { color: var(--text2); font-size: 15px; margin-top: 6px; margin-bottom: 28px; }
+
+/* ── Buttons ───────────────────────────────────────────── */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: var(--r);
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  text-align: center;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:active { opacity: 0.82; }
+.btn-ghost {
+  background: none;
+  color: var(--text2);
+  border: 1.5px solid var(--border);
+  margin-top: 12px;
+}
+.btn-ghost:active { border-color: var(--accent); color: var(--accent); }
+
+/* ── Section label ─────────────────────────────────────── */
+.lbl {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 10px;
+}
+
+/* ── Session type tabs ─────────────────────────────────── */
+.type-tabs { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 24px; }
+.type-tab {
+  padding: 14px 8px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.type-tab.on { border-color: var(--accent); background: var(--accent-d); }
+.tab-icon { font-size: 22px; margin-bottom: 4px; }
+.tab-lbl { font-size: 12px; font-weight: 600; color: var(--text2); }
+.type-tab.on .tab-lbl { color: var(--accent); }
+
+/* ── Grid picker (durations, ambient, challenge) ────────── */
+.pick-grid { display: grid; gap: 8px; margin-bottom: 24px; }
+.pick-grid.cols3 { grid-template-columns: repeat(3,1fr); }
+.pick-grid.cols4 { grid-template-columns: repeat(4,1fr); }
+.pick-btn {
+  padding: 12px 4px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  text-align: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text2);
+  font-family: var(--font);
+  transition: all 0.15s;
+}
+.pick-btn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-d); }
+.pick-btn .p-sub { font-size: 11px; font-weight: 400; display: block; margin-top: 2px; }
+
+/* ── Toggle ────────────────────────────────────────────── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.toggle-lbl { font-size: 15px; }
+.toggle-sub { font-size: 12px; color: var(--text3); }
+.switch {
+  width: 44px; height: 24px;
+  background: var(--border);
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.switch.on { background: var(--accent); }
+.switch::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  top: 3px; left: 3px;
+  transition: left 0.2s;
+}
+.switch.on::after { left: 23px; }
+
+/* ── Mantra input ──────────────────────────────────────── */
+.m-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text);
+  font-size: 16px;
+  font-family: var(--font);
+  outline: none;
+  margin-bottom: 24px;
+  transition: border-color 0.15s;
+}
+.m-input:focus { border-color: var(--accent); }
+.m-input::placeholder { color: var(--text3); }
+
+/* ── Volume ────────────────────────────────────────────── */
+.vol-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.vol-ico { font-size: 14px; }
+.vol-sl {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+.vol-sl::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* ── Challenge protocol card ───────────────────────────── */
+.protocol-card {
+  padding: 18px 16px;
+  background: linear-gradient(135deg, rgba(123,111,232,0.22), rgba(75,50,200,0.14));
+  border: 1.5px solid var(--accent);
+  border-radius: var(--r);
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: background 0.15s;
+}
+.protocol-card.on { background: var(--accent-d); }
+.p-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.p-days { font-size: 22px; font-weight: 800; }
+.p-line { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+/* ── Phase info block ──────────────────────────────────── */
+.phase-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+  margin-bottom: 24px;
+}
+.phase-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.phase-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.phase-copy { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+/* ── Day counter ───────────────────────────────────────── */
+.day-count { text-align: center; margin: 8px 0 20px; }
+.day-num { font-size: 52px; font-weight: 800; color: var(--accent); letter-spacing: -0.04em; line-height: 1; }
+.day-of { font-size: 14px; color: var(--text2); margin-top: 4px; }
+
+/* ── Dot strip ─────────────────────────────────────────── */
+.dot-weeks { display: flex; flex-direction: column; gap: 6px; margin-bottom: 24px; }
+.dot-week { display: flex; gap: 6px; }
+.dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+  cursor: default;
+}
+.dot.done { background: var(--accent); }
+.dot.today {
+  background: none;
+  border: 2px solid var(--accent);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+.dot.gap { background: var(--gap-dot); }
+@keyframes pulse-dot {
+  0%,100% { box-shadow: 0 0 3px var(--accent-g); }
+  50% { box-shadow: 0 0 9px var(--accent-g); }
+}
+
+/* ── Notices ───────────────────────────────────────────── */
+.notice {
+  border-radius: var(--r-sm);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  font-size: 14px;
+}
+.notice.gap-n { background: rgba(58,53,96,0.5); border: 1px solid var(--gap-dot); color: var(--text2); }
+.notice.info  { background: var(--surface); border: 1px solid var(--border); color: var(--text2); text-align: center; }
+.notice strong { color: var(--text); }
+
+/* ── Timer view ────────────────────────────────────────── */
+.timer-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+/* SVG ring */
+.ring-wrap { position: relative; width: 240px; height: 240px; margin-bottom: 32px; }
+.ring-wrap svg { position: absolute; top:0; left:0; transform: rotate(-90deg); }
+.ring-bg { stroke: var(--surface2); stroke-width: 8; fill: none; }
+.ring-fg { stroke: var(--accent); stroke-width: 8; fill: none; stroke-linecap: round; transition: stroke-dashoffset 0.9s linear; }
+.ring-inner {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  text-align: center;
+}
+.ring-time { font-size: 42px; font-weight: 700; letter-spacing: -0.03em; }
+.ring-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+/* Mantra display */
+.mantra-display { text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.mantra-text {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin-bottom: 28px;
+  text-shadow: 0 0 30px var(--accent-g);
+  animation: m-pulse 4.5s ease-in-out infinite;
+}
+@keyframes m-pulse { 0%,100% { opacity: 0.65; } 50% { opacity: 1; } }
+.mantra-clock { font-size: 20px; color: var(--text2); }
+
+/* Breathwork orb */
+.breath-display { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.orb-wrap { position: relative; width: 200px; height: 200px; margin-bottom: 28px; }
+.orb {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%) scale(0.5);
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 38%, rgba(123,111,232,0.85), rgba(60,40,180,0.45));
+  box-shadow: 0 0 48px var(--accent-g);
+  will-change: transform;
+}
+.breath-phase-lbl { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+.breath-phase-t { font-size: 52px; font-weight: 800; color: var(--accent); letter-spacing: -0.04em; text-align: center; line-height: 1; }
+.breath-cycles { font-size: 13px; color: var(--text2); text-align: center; margin-top: 6px; }
+.breath-total { font-size: 13px; color: var(--text3); text-align: center; margin-top: 8px; }
+
+/* Ambient indicator */
+.amb-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.amb-dot-live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: amb-p 2.2s ease-in-out infinite; }
+@keyframes amb-p { 0%,100% { opacity:0.45; } 50% { opacity:1; } }
+.amb-name-live { font-size: 12px; color: var(--text2); }
+.amb-toggle-btn { font-size: 12px; color: var(--accent); cursor: pointer; margin-left: 4px; }
+
+/* End button */
+.end-btn {
+  padding: 11px 24px;
+  background: none;
+  border: 1.5px solid rgba(255,80,80,0.25);
+  border-radius: 24px;
+  color: rgba(255,110,110,0.65);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.end-btn:active { border-color: rgba(255,80,80,0.7); color: rgba(255,100,100,1); }
+
+/* ── Done view ─────────────────────────────────────────── */
+.done-wrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+.done-bell { font-size: 56px; margin-bottom: 16px; animation: bell-in 0.55s ease-out; }
+@keyframes bell-in { 0%{transform:scale(0.25);opacity:0} 65%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+.done-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.done-sub { font-size: 15px; color: var(--text2); margin-bottom: 32px; line-height: 1.5; }
+.done-stats { background: var(--surface); border-radius: var(--r); padding: 20px; width: 100%; margin-bottom: 32px; text-align: left; }
+.done-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.done-row:last-child { border-bottom: none; }
+.done-k { font-size: 14px; color: var(--text2); }
+.done-v { font-size: 14px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══════════════ HOME ══════════════════════════════════ -->
+<div class="view active" id="view-home">
+  <div class="hdr">
+    <span class="hdr-title">Meditation</span>
+    <button class="btn-back" onclick="showHistory()" style="font-size:19px;line-height:1">&#9776;</button>
+  </div>
+  <div id="home-body"></div>
+</div>
+
+<!-- ══════════════ CHALLENGE SELECT ═════════════════════ -->
+<div class="view" id="view-challenge">
+  <div class="hdr">
+    <span class="hdr-title">Start a Challenge</span>
+    <button class="btn-back" onclick="showView('home')">Back</button>
+  </div>
+  <div id="chal-body"></div>
+</div>
+
+<!-- ══════════════ CONFIG ════════════════════════════════ -->
+<div class="view" id="view-config">
+  <div class="hdr">
+    <span class="hdr-title">Session Setup</span>
+    <button class="btn-back" onclick="showView('home')">Back</button>
+  </div>
+  <div id="cfg-body"></div>
+</div>
+
+<!-- ══════════════ TIMER ═════════════════════════════════ -->
+<div class="view" id="view-timer">
+  <div class="hdr">
+    <span class="hdr-title" id="timer-hdr-lbl">Session</span>
+    <button class="end-btn" onclick="confirmEnd()">End Session</button>
+  </div>
+  <div id="timer-body"></div>
+</div>
+
+<!-- ══════════════ DONE ══════════════════════════════════ -->
+<div class="view" id="view-done">
+  <div class="hdr"><span class="hdr-title">Complete</span></div>
+  <div id="done-body"></div>
+</div>
+
+</div><!-- .app -->
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════════════ */
+const PHASE_COPY = [
+  { label: 'Building Grit',       copy: 'Showing up when nothing feels different. You are fighting friction, not forming a habit yet. This is the hardest week.' },
+  { label: 'Determination',       copy: 'Friction is lower. You are choosing the practice consciously. Not automatic yet, but you are no longer forcing it.' },
+  { label: 'Becoming a Practice', copy: 'This is no longer willpower. It is starting to become who you are. Most people give up before this week. You did not.' },
+  { label: 'The Compound',        copy: 'Past the minimum threshold. The practice is starting to work without you pushing it. You will feel it in other areas.' },
+  { label: 'Integration',         copy: 'The practice is reorganising other parts of your life around it. Your nervous system is recalibrating. You will notice.' },
+  { label: 'Identity Shift',      copy: 'You are not someone who meditates. You are a meditator. The practice is no longer something you do. It is something you are.' },
+];
+
+const CHAL_OPTS = [7, 14, 21, 28, 35, 42];
+
+const BREATH_PATTERNS = {
+  '478':  { name: '4-7-8',  inS: 4, holdS: 7, outS: 8,  sub: 'Relaxation' },
+  'box':  { name: 'Box',    inS: 4, holdS: 4, outS: 4,  sub: 'Balance' },
+  'calm': { name: '4-0-6',  inS: 4, holdS: 0, outS: 6,  sub: 'Calming' },
+};
+
+const DURATIONS = [5, 10, 15, 20, 30, 45];
+
+/* ═══════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════ */
+const S = {
+  // config
+  sessionType:   'silent',
+  duration:      20,
+  ambient:       'off',
+  ambientVol:    0.4,
+  intervalBells: false,
+  intervalMin:   10,
+  mantraText:    'I am enough',
+  breathPat:     '478',
+  // runtime
+  timerEnd:      null,
+  totalSecs:     0,
+  timerTick:     null,
+  breathTick:    null,
+  breathPhase:   'inhale',
+  breathCycles:  0,
+  // audio
+  audioCtx:      null,
+  ambNode:       null,
+  ambGain:       null,
+  // challenge select
+  selDays:       21,
+  selTime:       'flexible',
+};
+
+/* ═══════════════════════════════════════════════════════
+   STORAGE
+═══════════════════════════════════════════════════════ */
+function lsGet(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch(e) { return def; } }
+function lsSet(k, v)   { localStorage.setItem(k, JSON.stringify(v)); }
+
+function getChallenge()  { return lsGet('med_c', null); }
+function setChallenge(c) { lsSet('med_c', c); }
+function getExplore()    { return lsGet('med_e', { sessions: [], count: 0 }); }
+function setExplore(e)   { lsSet('med_e', e); }
+function getHistory()    { return lsGet('med_h', []); }
+function setHistory(h)   { lsSet('med_h', h); }
+
+function loadCfg() {
+  const c = lsGet('med_cfg', null);
+  if (!c) return;
+  S.sessionType   = c.sessionType   ?? S.sessionType;
+  S.duration      = c.duration      ?? S.duration;
+  S.ambient       = c.ambient       ?? S.ambient;
+  S.ambientVol    = c.ambientVol    ?? S.ambientVol;
+  S.intervalBells = c.intervalBells ?? S.intervalBells;
+  S.intervalMin   = c.intervalMin   ?? S.intervalMin;
+  S.mantraText    = c.mantraText    ?? S.mantraText;
+  S.breathPat     = c.breathPat     ?? S.breathPat;
+}
+
+function saveCfg() {
+  lsSet('med_cfg', {
+    sessionType: S.sessionType, duration: S.duration,
+    ambient: S.ambient, ambientVol: S.ambientVol,
+    intervalBells: S.intervalBells, intervalMin: S.intervalMin,
+    mantraText: S.mantraText, breathPat: S.breathPat,
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   AUDIO ENGINE
+═══════════════════════════════════════════════════════ */
+function getCtx() {
+  if (!S.audioCtx || S.audioCtx.state === 'closed') {
+    S.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (S.audioCtx.state === 'suspended') S.audioCtx.resume();
+  return S.audioCtx;
+}
+
+function playBell(type) {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+  const freq = type === 'closing' ? 196 : type === 'interval' ? 261.6 : 220;
+  const decay = type === 'closing' ? 9 : 5;
+
+  // Fundamental
+  const o1 = ctx.createOscillator(), g1 = ctx.createGain();
+  o1.type = 'sine'; o1.frequency.value = freq;
+  g1.gain.setValueAtTime(0, now);
+  g1.gain.linearRampToValueAtTime(0.32, now + 0.02);
+  g1.gain.exponentialRampToValueAtTime(0.001, now + decay);
+  o1.connect(g1); g1.connect(ctx.destination);
+  o1.start(now); o1.stop(now + decay + 0.1);
+
+  // Inharmonic partial (bowl character)
+  const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+  o2.type = 'sine'; o2.frequency.value = freq * 2.756;
+  g2.gain.setValueAtTime(0, now);
+  g2.gain.linearRampToValueAtTime(0.11, now + 0.02);
+  g2.gain.exponentialRampToValueAtTime(0.001, now + decay * 0.55);
+  o2.connect(g2); g2.connect(ctx.destination);
+  o2.start(now); o2.stop(now + decay * 0.6);
+
+  // Octave partial
+  const o3 = ctx.createOscillator(), g3 = ctx.createGain();
+  o3.type = 'sine'; o3.frequency.value = freq * 1.5;
+  g3.gain.setValueAtTime(0, now);
+  g3.gain.linearRampToValueAtTime(0.07, now + 0.02);
+  g3.gain.exponentialRampToValueAtTime(0.001, now + decay * 0.35);
+  o3.connect(g3); g3.connect(ctx.destination);
+  o3.start(now); o3.stop(now + decay * 0.4);
+}
+
+function startAmbient(type) {
+  stopAmbient();
+  if (type === 'off') return;
+  const ctx = getCtx();
+  const SIZE = 4096;
+  const proc = ctx.createScriptProcessor(SIZE, 1, 1);
+
+  if (type === 'brown') {
+    let last = 0;
+    proc.onaudioprocess = e => {
+      const out = e.outputBuffer.getChannelData(0);
+      for (let i = 0; i < SIZE; i++) {
+        const w = Math.random() * 2 - 1;
+        out[i] = (last + 0.02 * w) / 1.02;
+        last = out[i];
+        out[i] *= 3.5;
+      }
+    };
+  } else {
+    let b = [0,0,0,0,0,0,0];
+    proc.onaudioprocess = e => {
+      const out = e.outputBuffer.getChannelData(0);
+      for (let i = 0; i < SIZE; i++) {
+        const w = Math.random() * 2 - 1;
+        b[0]=0.99886*b[0]+w*0.0555179; b[1]=0.99332*b[1]+w*0.0750759;
+        b[2]=0.96900*b[2]+w*0.1538520; b[3]=0.86650*b[3]+w*0.3104856;
+        b[4]=0.55000*b[4]+w*0.5329522; b[5]=-0.7616*b[5]-w*0.0168980;
+        out[i]=(b[0]+b[1]+b[2]+b[3]+b[4]+b[5]+b[6]+w*0.5362)*0.11;
+        b[6]=w*0.115926;
+      }
+    };
+  }
+  const gn = ctx.createGain();
+  gn.gain.value = S.ambientVol;
+  proc.connect(gn); gn.connect(ctx.destination);
+  S.ambNode = proc; S.ambGain = gn;
+}
+
+function stopAmbient() {
+  try { S.ambNode?.disconnect(); } catch(e){}
+  try { S.ambGain?.disconnect(); } catch(e){}
+  S.ambNode = null; S.ambGain = null;
+}
+
+function toggleAmbientLive() {
+  if (S.ambNode) {
+    stopAmbient();
+    S.ambient = 'off';
+  } else {
+    S.ambient = lsGet('med_cfg', {})?.ambient || 'brown';
+    if (S.ambient === 'off') S.ambient = 'brown';
+    startAmbient(S.ambient);
+  }
+  const bar = document.getElementById('amb-bar');
+  if (bar) bar.outerHTML = buildAmbBar();
+}
+
+function buildAmbBar() {
+  if (S.ambient === 'off' || !S.ambNode) return '<div id="amb-bar"></div>';
+  const name = S.ambient === 'brown' ? 'Brown Noise' : 'Pink Noise';
+  return `<div class="amb-bar" id="amb-bar">
+    <div class="amb-dot-live"></div>
+    <span class="amb-name-live">${name}</span>
+    <span class="amb-toggle-btn" onclick="toggleAmbientLive()">Stop</span>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHALLENGE SYSTEM
+═══════════════════════════════════════════════════════ */
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+function getPhase(dayNum) {
+  const block = Math.max(1, Math.ceil(dayNum / 7));
+  return PHASE_COPY[Math.min(block - 1, PHASE_COPY.length - 1)];
+}
+
+function checkMissedDays(c) {
+  if (!c) return false;
+  const today = todayStr();
+  const sessions = c.sessions || [];
+  const last = [...sessions].filter(s => s.completed).sort((a,b) => a.date < b.date ? 1 : -1)[0];
+  if (!last) return false;
+
+  const lastD = new Date(last.date);
+  const todayD = new Date(today);
+  const diff = Math.floor((todayD - lastD) / 86400000);
+  if (diff <= 1) return false;
+
+  let added = 0;
+  for (let i = 1; i < diff; i++) {
+    const gd = new Date(lastD); gd.setDate(gd.getDate() + i);
+    const gs = gd.toISOString().slice(0,10);
+    if (!sessions.find(s => s.date === gs)) {
+      sessions.push({ date: gs, completed: false, missed: true });
+      c.days += 1;
+      added++;
+    }
+  }
+  if (added > 0) { c.sessions = sessions; setChallenge(c); }
+  return added > 0;
+}
+
+function markTodayDone(c) {
+  if (!c) return;
+  const today = todayStr();
+  const sessions = c.sessions || [];
+  const ex = sessions.find(s => s.date === today);
+  if (ex) { ex.completed = true; ex.missed = false; }
+  else sessions.push({ date: today, completed: true, missed: false });
+  c.sessions = sessions;
+  c.daysCompleted = sessions.filter(s => s.completed).length;
+  setChallenge(c);
+}
+
+function buildDots(c) {
+  if (!c) return [];
+  const today = todayStr();
+  const start = new Date(c.started * 1000);
+  const sessions = c.sessions || [];
+  return Array.from({ length: c.days }, (_, i) => {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    const ds = d.toISOString().slice(0,10);
+    const ses = sessions.find(s => s.date === ds);
+    let type = 'future';
+    if (ses?.completed) type = 'done';
+    else if (ses?.missed) type = 'gap';
+    else if (ds === today) type = 'today';
+    else if (ds < today) type = 'gap';
+    return { ds, type, day: i + 1 };
+  });
+}
+
+function startChallenge(days, time) {
+  setChallenge({ days, originalDays: days, started: Math.floor(Date.now()/1000), sessions: [], daysCompleted: 0, sessionTime: time });
+  S.selDays = 21; S.selTime = 'flexible';
+  showView('home');
+}
+
+/* ═══════════════════════════════════════════════════════
+   TIMER ENGINE
+═══════════════════════════════════════════════════════ */
+function beginSession() {
+  saveCfg();
+  S.totalSecs = S.duration * 60;
+  S.timerEnd  = Date.now() + S.totalSecs * 1000;
+  clearTimers();
+
+  // Wake lock
+  navigator.wakeLock?.request('screen').catch(()=>{});
+
+  // Ambient
+  if (S.ambient !== 'off') startAmbient(S.ambient);
+
+  // Opening bell after slight delay
+  setTimeout(() => playBell('opening'), 350);
+
+  // Interval bells
+  if (S.intervalBells && S.sessionType !== 'breathwork') {
+    S._nextBell = Date.now() + S.intervalMin * 60000;
+  } else { S._nextBell = null; }
+
+  showView('timer');
+  document.getElementById('timer-hdr-lbl').textContent =
+    { silent: 'Silent', mantra: 'Mantra', breathwork: 'Breathwork' }[S.sessionType];
+
+  if (S.sessionType === 'breathwork') {
+    renderBreathView();
+    startBreathwork();
+  } else {
+    renderTimerView();
+    S.timerTick = setInterval(tickMain, 500);
+  }
+}
+
+function tickMain() {
+  const left = Math.max(0, Math.round((S.timerEnd - Date.now()) / 1000));
+  updateRing(left);
+  if (S._nextBell && Date.now() >= S._nextBell) {
+    playBell('interval');
+    S._nextBell = Date.now() + S.intervalMin * 60000;
+  }
+  if (left <= 0) finishSession();
+}
+
+function finishSession() {
+  clearTimers();
+  stopAmbient();
+  playBell('closing');
+  setTimeout(() => playBell('closing'), 2800);
+
+  // Record history
+  const h = getHistory();
+  h.unshift({ date: todayStr(), type: S.sessionType, duration: S.duration, ts: Date.now() });
+  if (h.length > 100) h.length = 100;
+  setHistory(h);
+
+  // Challenge or explore tracking
+  const c = getChallenge();
+  if (c) {
+    markTodayDone(c);
+  } else {
+    const e = getExplore();
+    e.sessions.push({ date: todayStr(), duration: S.duration, type: S.sessionType });
+    e.count = e.sessions.length;
+    setExplore(e);
+  }
+
+  showDone();
+}
+
+function confirmEnd() {
+  if (confirm('End this session early?')) {
+    clearTimers();
+    stopAmbient();
+    showView('home');
+  }
+}
+
+function clearTimers() {
+  clearInterval(S.timerTick);
+  clearInterval(S.breathTick);
+  S.timerTick = null;
+  S.breathTick = null;
+}
+
+/* ═══════════════════════════════════════════════════════
+   BREATHWORK ENGINE
+═══════════════════════════════════════════════════════ */
+function startBreathwork() {
+  S.breathPhase  = 'inhale';
+  S.breathCycles = 0;
+  runBreathPhase();
+}
+
+function runBreathPhase() {
+  clearInterval(S.breathTick);
+  const pat = BREATH_PATTERNS[S.breathPat];
+
+  let dur;
+  if (S.breathPhase === 'inhale') dur = pat.inS;
+  else if (S.breathPhase === 'hold') dur = pat.holdS;
+  else dur = pat.outS;
+
+  // Skip zero-duration hold
+  if (dur === 0) {
+    S.breathPhase = 'exhale';
+    runBreathPhase(); return;
+  }
+
+  S._breathEnd = Date.now() + dur * 1000;
+
+  // Animate orb
+  const orb = document.getElementById('breath-orb');
+  if (orb) {
+    orb.style.transition = `transform ${dur}s linear`;
+    const scale = S.breathPhase === 'inhale' ? 1 : S.breathPhase === 'hold' ? 1 : 0.5;
+    orb.style.transform = `translate(-50%,-50%) scale(${scale})`;
+  }
+
+  const lbl = document.getElementById('breath-lbl');
+  if (lbl) lbl.textContent = S.breathPhase === 'inhale' ? 'Inhale' : S.breathPhase === 'hold' ? 'Hold' : 'Exhale';
+
+  S.breathTick = setInterval(() => {
+    const left = Math.max(0, Math.round((S._breathEnd - Date.now()) / 1000));
+    const el = document.getElementById('breath-t');
+    if (el) el.textContent = left;
+
+    // Update total remaining
+    const totalLeft = Math.max(0, Math.round((S.timerEnd - Date.now()) / 1000));
+    const tot = document.getElementById('breath-total');
+    if (tot) tot.textContent = `${fmtTime(totalLeft)} remaining`;
+
+    if (left <= 0) {
+      clearInterval(S.breathTick);
+
+      if (S.breathPhase === 'inhale') {
+        S.breathPhase = pat.holdS > 0 ? 'hold' : 'exhale';
+      } else if (S.breathPhase === 'hold') {
+        S.breathPhase = 'exhale';
+      } else {
+        S.breathPhase = 'inhale';
+        S.breathCycles++;
+        const cy = document.getElementById('breath-cycles');
+        if (cy) cy.textContent = `${S.breathCycles} cycle${S.breathCycles !== 1 ? 's' : ''}`;
+      }
+
+      const tLeft = Math.max(0, Math.round((S.timerEnd - Date.now()) / 1000));
+      if (tLeft <= 0) { finishSession(); return; }
+      runBreathPhase();
+    }
+  }, 500);
+}
+
+/* ═══════════════════════════════════════════════════════
+   VIEW ROUTER
+═══════════════════════════════════════════════════════ */
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  if (name === 'home')      renderHome();
+  if (name === 'challenge') renderChalSel();
+  if (name === 'config')    renderCfg();
+}
+
+/* ═══════════════════════════════════════════════════════
+   HOME
+═══════════════════════════════════════════════════════ */
+function renderHome() {
+  loadCfg();
+  const c = getChallenge();
+  const el = document.getElementById('home-body');
+  if (c) {
+    const missed = checkMissedDays(c);
+    const fresh = getChallenge();
+    renderChalHome(el, fresh, missed);
+  } else {
+    renderExploreHome(el);
+  }
+}
+
+function renderExploreHome(el) {
+  const e = getExplore();
+  const n = e.count || 0;
+  el.innerHTML = `
+    <div class="hero">
+      <div class="hero-title">Show up.<br><em>Every day.</em></div>
+      <div class="hero-sub">System, not willpower.</div>
+    </div>
+    ${n > 0 ? `<div class="notice info"><strong>${n} session${n!==1?'s':''}</strong> done so far. Ready to commit?</div>` : ''}
+    <button class="btn btn-primary" onclick="showView('config')">Start a Session</button>
+    <button class="btn btn-ghost" onclick="showView('challenge')">Start a Challenge</button>
+  `;
+}
+
+function renderChalHome(el, c, missed) {
+  const dots  = buildDots(c);
+  const today = todayStr();
+  const doneSes = (c.sessions||[]).filter(s => s.completed).length;
+  const dayNum  = Math.min(doneSes + 1, c.days);
+  const phase   = getPhase(dayNum);
+  const todayDone = (c.sessions||[]).find(s => s.date === today && s.completed);
+
+  // Build dot rows (weeks of 7)
+  const weeks = [];
+  for (let i = 0; i < dots.length; i += 7) weeks.push(dots.slice(i, i+7));
+  const dotHtml = weeks.map(w =>
+    `<div class="dot-week">${w.map(d => `<div class="dot ${d.type}" title="Day ${d.day}"></div>`).join('')}</div>`
+  ).join('');
+
+  el.innerHTML = `
+    ${missed ? `<div class="notice gap-n"><strong>Gap day recorded.</strong> Day extended. You are still on Day ${dayNum}. Keep going.</div>` : ''}
+    <div class="day-count">
+      <div class="day-num">${dayNum}</div>
+      <div class="day-of">of ${c.days} days</div>
+    </div>
+    <div class="phase-block">
+      <div class="phase-tag">Week ${Math.ceil(dayNum/7)} &mdash; ${phase.label}</div>
+      <div class="phase-copy">${phase.copy}</div>
+    </div>
+    <div class="dot-weeks">${dotHtml}</div>
+    ${todayDone
+      ? `<div class="notice info">Today done. <strong>Come back tomorrow.</strong></div>`
+      : `<button class="btn btn-primary" onclick="showView('config')">Begin Today's Session</button>`
+    }
+    <button class="btn btn-ghost" onclick="endChal()">End Challenge</button>
+  `;
+}
+
+function endChal() {
+  if (confirm('End this challenge? Progress will be cleared.')) {
+    localStorage.removeItem('med_c');
+    renderHome();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHALLENGE SELECT
+═══════════════════════════════════════════════════════ */
+function renderChalSel() {
+  const e = getExplore();
+  const n = e.count || 0;
+  const el = document.getElementById('chal-body');
+
+  el.innerHTML = `
+    ${n > 0 ? `<div class="notice info" style="margin-bottom:20px">You have already done <strong>${n} session${n!==1?'s':''}</strong>. Closer than you think.</div>` : ''}
+    <p class="lbl" style="margin-bottom:12px">Choose your commitment</p>
+    <div class="protocol-card ${S.selDays===40?'on':''}" onclick="selDays(40)">
+      <div class="p-badge">The Protocol</div>
+      <div class="p-days">40 Days</div>
+      <div class="p-line">The psychiatrist said 40 days. This is why.</div>
+    </div>
+    <div class="pick-grid cols3" style="margin-bottom:16px">
+      ${CHAL_OPTS.map(d => `
+        <div class="pick-btn ${S.selDays===d?'on':''}" onclick="selDays(${d})">
+          <span style="font-size:20px;font-weight:800">${d}</span>
+          <span class="p-sub">days</span>
+        </div>
+      `).join('')}
+    </div>
+    <p class="lbl" style="margin-bottom:10px">Preferred session time</p>
+    <div class="pick-grid cols3" style="margin-bottom:24px">
+      ${[['morning','🌅'],['evening','🌙'],['flexible','🕐']].map(([t,ic]) => `
+        <div class="pick-btn ${S.selTime===t?'on':''}" onclick="selTime('${t}')">
+          <span style="font-size:20px">${ic}</span>
+          <span class="p-sub">${t.charAt(0).toUpperCase()+t.slice(1)}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="phase-block">
+      <div class="phase-tag">What to expect</div>
+      <div class="phase-title">${expectTitle(S.selDays)}</div>
+      <div class="phase-copy">${expectCopy(S.selDays)}</div>
+    </div>
+    <button class="btn btn-primary" onclick="commitChal()">I am committing</button>
+  `;
+}
+
+function selDays(d) { S.selDays = d; renderChalSel(); }
+function selTime(t) { S.selTime = t; renderChalSel(); }
+function commitChal() { startChallenge(S.selDays, S.selTime); }
+
+function expectTitle(d) {
+  if (d <= 7)  return 'Seven days of grit';
+  if (d <= 14) return 'Two weeks of determination';
+  if (d <= 21) return 'Twenty-one days to a practice';
+  if (d <= 28) return 'Twenty-eight days, then the compound kicks in';
+  if (d === 40) return 'Forty days. The psychiatrist was right.';
+  if (d <= 35) return 'Five weeks, integration territory';
+  return 'Forty-two days. Identity shift territory.';
+}
+
+function expectCopy(d) {
+  if (d <= 7)  return 'The first week nothing feels different. That is normal. Keep showing up.';
+  if (d <= 14) return 'Week one builds the habit. Week two is where most people quietly stop. You will not.';
+  if (d <= 21) return 'Weeks one and two build the habit. Week three is when most people feel something shift.';
+  if (d <= 28) return 'By week three it stops being effort. Week four is when you notice it in other parts of your life.';
+  if (d === 40) return 'Nothing feels different for the first three weeks. Around day 28 something shifts. Your body will know before your mind does.';
+  return 'Week four is usually when the shift happens. Everything after is compounding. Most people never get here.';
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════════ */
+function renderCfg() {
+  const el = document.getElementById('cfg-body');
+  el.innerHTML = `
+    <div class="type-tabs">
+      ${[['silent','🔇','Silent'],['mantra','🧘','Mantra'],['breathwork','💨','Breathwork']].map(([id,ic,lb]) => `
+        <div class="type-tab ${S.sessionType===id?'on':''}" onclick="setType('${id}')">
+          <div class="tab-icon">${ic}</div>
+          <div class="tab-lbl">${lb}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <p class="lbl">Duration</p>
+    <div class="pick-grid cols4">
+      ${DURATIONS.map(d => `<div class="pick-btn ${S.duration===d?'on':''}" onclick="setDur(${d})">${d}m</div>`).join('')}
+    </div>
+
+    ${S.sessionType === 'mantra' ? `
+      <p class="lbl">Your Mantra</p>
+      <input class="m-input" id="m-inp" value="${esc(S.mantraText)}" placeholder="I am enough..." maxlength="80" oninput="S.mantraText=this.value">
+    ` : ''}
+
+    ${S.sessionType === 'breathwork' ? `
+      <p class="lbl">Pattern</p>
+      <div class="pick-grid cols3" style="margin-bottom:24px">
+        ${Object.entries(BREATH_PATTERNS).map(([k,p]) => `
+          <div class="pick-btn ${S.breathPat===k?'on':''}" onclick="setBreath('${k}')">
+            <span style="font-weight:700">${p.name}</span>
+            <span class="p-sub">${p.sub}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+
+    <p class="lbl">Ambient Sound</p>
+    <div class="pick-grid cols3" style="margin-bottom:${S.ambient!=='off'?'12px':'24px'}">
+      ${[['off','Off'],['brown','Brown Noise'],['pink','Pink Noise']].map(([k,lb]) => `
+        <div class="pick-btn ${S.ambient===k?'on':''}" onclick="setAmb('${k}')">${lb}</div>
+      `).join('')}
+    </div>
+    ${S.ambient !== 'off' ? `
+      <div class="vol-row">
+        <span class="vol-ico">&#128264;</span>
+        <input type="range" class="vol-sl" min="0" max="1" step="0.05" value="${S.ambientVol}" oninput="S.ambientVol=+this.value">
+        <span class="vol-ico">&#128266;</span>
+      </div>
+    ` : ''}
+
+    ${S.sessionType !== 'breathwork' ? `
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-lbl">Interval Bells</div>
+          <div class="toggle-sub">Bell every ${S.intervalMin} minutes</div>
+        </div>
+        <div class="switch ${S.intervalBells?'on':''}" onclick="S.intervalBells=!S.intervalBells;renderCfg()"></div>
+      </div>
+    ` : '<div style="height:24px"></div>'}
+
+    <button class="btn btn-primary" onclick="beginSession()">Begin Session</button>
+  `;
+}
+
+function setType(t) { S.sessionType = t; renderCfg(); }
+function setDur(d)  { S.duration = d;    renderCfg(); }
+function setAmb(a)  { S.ambient = a;     renderCfg(); }
+function setBreath(b){ S.breathPat = b;  renderCfg(); }
+
+/* ═══════════════════════════════════════════════════════
+   TIMER RENDERS
+═══════════════════════════════════════════════════════ */
+const RING_R = 104;
+const RING_C = 2 * Math.PI * RING_R;
+
+function renderTimerView() {
+  const el = document.getElementById('timer-body');
+  const time = fmtTime(S.totalSecs);
+
+  if (S.sessionType === 'mantra') {
+    el.innerHTML = `
+      <div class="mantra-display">
+        <div class="mantra-text">${esc(S.mantraText)}</div>
+        <div class="mantra-clock" id="ring-time">${time}</div>
+        <div style="height:28px"></div>
+        ${buildAmbBar()}
+        <button class="end-btn" onclick="confirmEnd()" style="margin-top:8px">End Session</button>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div class="timer-wrap">
+        <div class="ring-wrap">
+          <svg width="240" height="240" viewBox="0 0 240 240">
+            <circle class="ring-bg" cx="120" cy="120" r="${RING_R}"/>
+            <circle class="ring-fg" id="ring-fg" cx="120" cy="120" r="${RING_R}"
+              stroke-dasharray="${RING_C.toFixed(2)}"
+              stroke-dashoffset="0"/>
+          </svg>
+          <div class="ring-inner">
+            <div class="ring-time" id="ring-time">${time}</div>
+            <div class="ring-sub">remaining</div>
+          </div>
+        </div>
+        ${buildAmbBar()}
+        <button class="end-btn" onclick="confirmEnd()">End Session</button>
+      </div>`;
+  }
+}
+
+function updateRing(secsLeft) {
+  const t = document.getElementById('ring-time');
+  if (t) t.textContent = fmtTime(secsLeft);
+  const fg = document.getElementById('ring-fg');
+  if (fg) fg.style.strokeDashoffset = (RING_C * (1 - secsLeft / S.totalSecs)).toFixed(2);
+}
+
+function renderBreathView() {
+  const pat = BREATH_PATTERNS[S.breathPat];
+  const el = document.getElementById('timer-body');
+  el.innerHTML = `
+    <div class="breath-display">
+      <div class="orb-wrap">
+        <div class="orb" id="breath-orb"></div>
+      </div>
+      <div class="breath-phase-lbl" id="breath-lbl">Inhale</div>
+      <div class="breath-phase-t" id="breath-t">${pat.inS}</div>
+      <div class="breath-cycles" id="breath-cycles">0 cycles</div>
+      <div class="breath-total" id="breath-total">${fmtTime(S.totalSecs)} remaining</div>
+      <div style="height:24px"></div>
+      ${buildAmbBar()}
+      <button class="end-btn" onclick="confirmEnd()" style="margin-top:8px">End Session</button>
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DONE
+═══════════════════════════════════════════════════════ */
+function showDone() {
+  showView('done');
+  const c = getChallenge();
+  const done = c?.daysCompleted || 0;
+  const phase = c ? getPhase(done) : null;
+  const el = document.getElementById('done-body');
+  el.innerHTML = `
+    <div class="done-wrap">
+      <div class="done-bell">&#128276;</div>
+      <div class="done-title">${S.duration} minutes.</div>
+      <div class="done-sub">${doneMsg(done, c)}</div>
+      <div class="done-stats">
+        <div class="done-row"><span class="done-k">Session</span><span class="done-v">${S.sessionType.charAt(0).toUpperCase()+S.sessionType.slice(1)}</span></div>
+        <div class="done-row"><span class="done-k">Duration</span><span class="done-v">${S.duration} min</span></div>
+        ${c ? `<div class="done-row"><span class="done-k">Challenge day</span><span class="done-v">${done} of ${c.days}</span></div>` : ''}
+        ${phase ? `<div class="done-row"><span class="done-k">Phase</span><span class="done-v">${phase.label}</span></div>` : ''}
+      </div>
+      <button class="btn btn-primary" onclick="showView('home')">Done</button>
+    </div>`;
+}
+
+function doneMsg(d, c) {
+  if (!c) return 'You showed up. That is the only rule.';
+  if (d === 1)  return 'Day one. The hardest one to start. Done.';
+  if (d === 7)  return 'Seven days. Grit built. Week two is about making it stick.';
+  if (d === 14) return 'Two weeks of consistency. Most people stopped at day three.';
+  if (d === 21) return 'Twenty-one days. This is a practice now.';
+  if (d === 28) return 'Twenty-eight days. The compound is kicking in.';
+  if (d === 35) return 'Thirty-five days. Integration territory.';
+  if (d >= 40)  return 'Forty days. The psychiatrist was right.';
+  return `Day ${d} done. Keep going.`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   HISTORY (simple)
+═══════════════════════════════════════════════════════ */
+function showHistory() {
+  const h = getHistory();
+  if (!h.length) { alert('No sessions recorded yet.'); return; }
+  const lines = h.slice(0,12).map(s => `${s.date}  ${s.type}  ${s.duration}min`).join('\n');
+  alert(`Recent sessions:\n\n${lines}`);
+}
+
+/* ═══════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════ */
+function fmtTime(s) {
+  const m = Math.floor(s / 60), sc = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  loadCfg();
+  showView('home');
+});
+</script>
+</body>
+</html>
