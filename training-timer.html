@@ -779,8 +779,9 @@ const SFX = {
   recovery:  () => { tone(330, 1.4, 'sine', 0.14, 0.94); toneAt(277, 1.1, 90, 'sine', 0.07); },
   cooldown:  () => { tone(523, 2.0, 'sine', 0.16, 0.96); toneAt(659, 1.6, 50, 'sine', 0.1); },
   finish:    () => { [523,659,784].forEach((f,i) => toneAt(f, 0.45, i*210, 'sine', 0.22)); },
-  tick:      () => tone(660, 0.06, 'sine', 0.09),          // soft tick — 10-4s warning
-  beep1:     () => tone(1047, 0.10, 'sine', 0.22),         // sharp beep — 3-1s warning
+  tick:        () => tone(660, 0.06, 'sine', 0.09),          // soft tick — 10-4s warning
+  beep1:       () => tone(1047, 0.10, 'sine', 0.22),         // sharp beep — 3-1s warning
+  minuteMark:  () => { tone(880, 0.055, 'sine', 0.13); toneAt(880, 0.055, 110, 'sine', 0.13); },
 };
 
 function speak(text) {
@@ -827,6 +828,7 @@ let setsOk = 0, cyclesOk = 0;
 let tick = null, lastTick = 0;
 let wl = null; // wake lock
 let lastCountdownSec = -1; // tracks last second we beeped to avoid double-fire
+let lastMinuteMark = -1;   // tracks last whole minute elapsed in work phase
 
 function buildSeq() {
   const s = [];
@@ -869,6 +871,7 @@ function goPhase(idx) {
   phaseTotal = step.dur;
   phaseRem = step.dur;
   lastCountdownSec = -1; // reset per phase
+  lastMinuteMark = -1;
 
   const p = PC[phase];
   document.getElementById('phaseLbl').textContent = p.lbl;
@@ -914,6 +917,15 @@ function startTick() {
     lastTick = now;
     phaseRem -= dt;
     sessElapsed = (now - sessStart) / 1000;
+
+    // Minute marker during work phase — double-tap at each completed minute
+    if (phase === 'work' && cfg.audio !== 'silence') {
+      const elapsedMin = Math.floor(phaseTotal - phaseRem) / 60 | 0;
+      if (elapsedMin > 0 && elapsedMin !== lastMinuteMark) {
+        lastMinuteMark = elapsedMin;
+        SFX.minuteMark();
+      }
+    }
 
     // Last-10-second countdown — fire once per displayed second (10 down to 1)
     // Using a "last fired" tracker avoids the crossing-detection failure on
@@ -997,7 +1009,9 @@ function updateRing() {
 
   // Sub line
   const el = Math.floor(sessElapsed);
-  document.getElementById('rSub').textContent = fmtTime(el) + ' elapsed';
+  const rSub = document.getElementById('rSub');
+  rSub.textContent = fmtTime(el) + ' elapsed';
+  rSub.style.color = phase === 'work' ? '#ff9f0a' : '';
 }
 
 /* ════════════════════════════════════════════
