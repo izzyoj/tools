@@ -480,7 +480,7 @@ html, body {
   <div class="cfg-header">
     <div>
       <h1 class="cfg-title">Double KB Timer</h1>
-      <p class="cfg-sub">System, not willpower.</p>
+      <p class="cfg-sub">Systems, not willpower.</p>
     </div>
     <button class="icon-btn" id="audioBtn" title="Audio mode">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -1445,7 +1445,7 @@ function generateShareCard(s) {
   // Tagline
   c.fillStyle = 'rgba(255,255,255,0.48)';
   c.font = 'italic 40px Georgia, serif';
-  c.fillText('"System, not willpower."', W/2, 1142);
+  c.fillText('"Systems, not willpower."', W/2, 1142);
 
   // CTA
   c.fillStyle = ACCENT;
@@ -1472,7 +1472,7 @@ async function shareSession(idx) {
     if (navigator.share && navigator.canShare?.({files: [file]})) {
       await navigator.share({
         files: [file],
-        text: `${fmtCardTime(s.secs)} ${s.label || 'session'} done. System, not willpower. 🔥\n\nFree Double KB Timer 👇`,
+        text: `${fmtCardTime(s.secs)} ${s.label || 'session'} done. Systems, not willpower. 🔥\n\nFree Double KB Timer 👇`,
       });
       return;
     }
