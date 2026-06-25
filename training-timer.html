@@ -1011,7 +1011,7 @@ function updateRing() {
   const el = Math.floor(sessElapsed);
   const rSub = document.getElementById('rSub');
   rSub.textContent = fmtTime(el) + ' elapsed';
-  rSub.style.color = phase === 'work' ? '#ff9f0a' : '';
+  rSub.style.color = phase !== 'countdown' ? '#ff9f0a' : '';
 }
 
 /* ════════════════════════════════════════════
